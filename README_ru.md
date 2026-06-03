@@ -8,6 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Release](https://img.shields.io/github/v/release/kas-cor/ask-ai-dolphin-context-menu)](https://github.com/kas-cor/ask-ai-dolphin-context-menu/releases)
 [![Platform](https://img.shields.io/badge/Platform-Linux--KDE-blue)](https://kde.org)
+[![Changelog](https://img.shields.io/badge/Changelog-CHANGELOG.md-blue)](CHANGELOG.md)
 
 Интеграция AI-ассистента в контекстное меню файлового менеджера **Dolphin** (KDE Plasma).
 
@@ -227,6 +228,7 @@ ask-ai-dolphin-context-menu/
 ├── install.sh                  # Скрипт установки (работает и через curl)
 ├── uninstall.sh                # Скрипт удаления (работает и через curl)
 ├── AGENTS.md                   # Описание для AI-агентов
+├── CHANGELOG.md                # История релизов
 ├── README.md                   # Документация на английском
 └── README_ru.md                # Этот файл
 ```
