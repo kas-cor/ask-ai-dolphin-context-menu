@@ -3,11 +3,13 @@
 Validate locale files in the locales/ directory.
 
 Checks:
-  1. Every non-blank, non-comment line matches KEY="value" format
-  2. No duplicate keys within a file
-  3. Keys contain only alphanumeric characters and underscores
-  4. Values are properly double-quoted
-  5. All locale files have the same set of keys
+  1. File is valid UTF-8 (no invalid byte sequences)
+  2. File has no UTF-8 BOM (Byte Order Mark)
+  3. Every non-blank, non-comment line matches KEY="value" format
+  4. No duplicate keys within a file
+  5. Keys contain only alphanumeric characters and underscores
+  6. Values are properly double-quoted
+  7. All locale files have the same set of keys
 
 Usage:
   python3 .github/scripts/validate-locales.py [files...]
@@ -31,11 +33,25 @@ def validate_file(filepath: str) -> list[str]:
     errors: list[str] = []
     keys_seen: dict[str, int] = {}
 
+    # Read raw bytes first to check for BOM and invalid UTF-8
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            lines = f.readlines()
+        with open(filepath, "rb") as f:
+            raw_bytes = f.read()
     except IOError as e:
         return [f"  Cannot read file: {e}"]
+
+    # Check for UTF-8 BOM (Byte Order Mark)
+    if raw_bytes.startswith(b"\xef\xbb\xbf"):
+        errors.append(r"  File has UTF-8 BOM (\xef\xbb\xbf) at the beginning — remove it")
+
+    # Decode as UTF-8, catching invalid byte sequences
+    try:
+        text = raw_bytes.decode("utf-8")
+    except UnicodeDecodeError as e:
+        errors.append(f"  Invalid UTF-8 encoding: {e}")
+        return errors
+
+    lines = text.splitlines(keepends=True)
 
     for lineno, raw_line in enumerate(lines, start=1):
         line = raw_line.strip()
