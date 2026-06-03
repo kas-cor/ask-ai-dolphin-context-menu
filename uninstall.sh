@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ./uninstall.sh                — from a cloned repository
-#   curl -s https://raw.githubusercontent.com/kas-cor/ask_ai_dolphin_context_menu/main/uninstall.sh | bash
+#   curl -s https://raw.githubusercontent.com/kas-cor/ask-ai-dolphin-context-menu/main/uninstall.sh | bash
 
 set -euo pipefail
 

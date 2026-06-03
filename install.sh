@@ -3,7 +3,7 @@
 #
 # Supports two modes:
 #   1. Local:   ./install.sh — from a cloned repository
-#   2. One-liner:  curl -s https://raw.githubusercontent.com/kas-cor/ask_ai_dolphin_context_menu/main/install.sh | bash
+#   2. One-liner:  curl -s https://raw.githubusercontent.com/kas-cor/ask-ai-dolphin-context-menu/main/install.sh | bash
 #
 # Copies scripts to ~/.local/bin/
 # Installs the service menu to ~/.local/share/kio/servicemenus/
@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-REPO="kas-cor/ask_ai_dolphin_context_menu"
+REPO="kas-cor/ask-ai-dolphin-context-menu"
 BRANCH="main"
 GITHUB_RAW="https://raw.githubusercontent.com/$REPO/$BRANCH"
 GITHUB_TAR="https://github.com/$REPO/archive/$BRANCH.tar.gz"

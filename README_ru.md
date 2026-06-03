@@ -35,7 +35,7 @@ yay -S glow-bin  # или sudo pacman -S glow, если есть в репози
 ### Одной строкой (curl | bash)
 
 ```bash
-curl -s https://raw.githubusercontent.com/kas-cor/ask_ai_dolphin_context_menu/main/install.sh | bash
+curl -s https://raw.githubusercontent.com/kas-cor/ask-ai-dolphin-context-menu/main/install.sh | bash
 ```
 
 Скрипт сам скачает проект из GitHub и выполнит установку. Ничего клонировать не нужно.
@@ -43,14 +43,14 @@ curl -s https://raw.githubusercontent.com/kas-cor/ask_ai_dolphin_context_menu/ma
 ### Удаление одной строкой
 
 ```bash
-curl -s https://raw.githubusercontent.com/kas-cor/ask_ai_dolphin_context_menu/main/uninstall.sh | bash
+curl -s https://raw.githubusercontent.com/kas-cor/ask-ai-dolphin-context-menu/main/uninstall.sh | bash
 ```
 
 ### Локальная установка (git clone)
 
 ```bash
-git clone https://github.com/kas-cor/ask_ai_dolphin_context_menu.git
-cd ask_ai_dolphin_context_menu
+git clone https://github.com/kas-cor/ask-ai-dolphin-context-menu.git
+cd ask-ai-dolphin-context-menu
 ./install.sh
 ```
 
@@ -113,7 +113,7 @@ askr "Просто покажи ответ"
 ## Структура проекта
 
 ```
-ask_ai_dolphin_context_menu/
+ask-ai-dolphin-context-menu/
 ├── src/
 │   ├── ask-dolphin.sh          # Входная точка — PyQt5 диалог + Konsole
 │   ├── ask-dolphin-run.sh      # Раннер: стриминг opencode через glow

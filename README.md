@@ -35,7 +35,7 @@ yay -S glow-bin  # or sudo pacman -S glow if available
 ### One-liner (curl | bash)
 
 ```bash
-curl -s https://raw.githubusercontent.com/kas-cor/ask_ai_dolphin_context_menu/main/install.sh | bash
+curl -s https://raw.githubusercontent.com/kas-cor/ask-ai-dolphin-context-menu/main/install.sh | bash
 ```
 
 The script downloads the project from GitHub and installs it. No cloning needed.
@@ -43,14 +43,14 @@ The script downloads the project from GitHub and installs it. No cloning needed.
 ### One-liner uninstall
 
 ```bash
-curl -s https://raw.githubusercontent.com/kas-cor/ask_ai_dolphin_context_menu/main/uninstall.sh | bash
+curl -s https://raw.githubusercontent.com/kas-cor/ask-ai-dolphin-context-menu/main/uninstall.sh | bash
 ```
 
 ### Local install (git clone)
 
 ```bash
-git clone https://github.com/kas-cor/ask_ai_dolphin_context_menu.git
-cd ask_ai_dolphin_context_menu
+git clone https://github.com/kas-cor/ask-ai-dolphin-context-menu.git
+cd ask-ai-dolphin-context-menu
 ./install.sh
 ```
 
@@ -113,7 +113,7 @@ askr "Show me the answer"
 ## Project structure
 
 ```
-ask_ai_dolphin_context_menu/
+ask-ai-dolphin-context-menu/
 ├── src/
 │   ├── ask-dolphin.sh          # Entry point — PyQt5 dialog + Konsole
 │   ├── ask-dolphin-run.sh      # Runner: stream opencode through glow
