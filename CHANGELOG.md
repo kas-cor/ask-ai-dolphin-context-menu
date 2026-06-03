@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1](https://github.com/kas-cor/ask-ai-dolphin-context-menu/compare/ask-ai-dolphin-context-menu-v1.1.0...ask-ai-dolphin-context-menu-v1.1.1) (2026-06-03)
+
+
+### Bug Fixes
+
+* use conditional sourcing [[ -f ~/.ask_ai ]] && . ~/.ask_ai in shell config ([77b7dcc](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/77b7dcc1ceabc5fd3336e196a33f81124290e9b6))
+
 ## [1.1.0] — 2026-06-03
 
 ### 🎨 Added
