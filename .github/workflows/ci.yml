@@ -24,3 +24,8 @@ jobs:
         run: |
           python3 -m py_compile src/ask-dolphin-dialog.py
           echo "Python syntax OK"
+
+      - name: Locale files validation
+        run: |
+          python3 .github/scripts/validate-locales.py
+          echo "Locale files OK"
