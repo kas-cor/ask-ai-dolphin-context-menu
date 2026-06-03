@@ -29,7 +29,7 @@ install_restart_dolphin="Чтобы применить, перезапустит
 install_restart_terminal="Или из терминала: killall dolphin && dolphin --new-window &"
 install_optional="📝 Дополнительно:"
 install_edit_presets="  - Изменить пресеты:  nano %s"
-install_set_model="  - Сменить модель:    nano ~/.ask_ai  (изменить ASK_MODEL)"
+install_set_model="  - Сменить модель:    nano ~/.ask_ai  (изменить ASK_AI_MODEL)"
 
 # --- runner messages (runner_) ---
 runner_hdr_title="🤖  Спросить AI о выбранных файлах"
