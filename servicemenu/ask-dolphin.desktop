@@ -8,5 +8,6 @@ X-KDE-ShowWithoutSelection=true
 
 [Desktop Action askSelectedFiles]
 Name=🤖 Ask AI
+Name[ru]=🤖 Спросить AI
 Icon=utilities-terminal
 Exec=@HOME@/.local/bin/ask-dolphin.sh %F
