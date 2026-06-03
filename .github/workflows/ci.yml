@@ -14,15 +14,15 @@ jobs:
 
       - name: Shell syntax check
         run: |
-          bash -n src/ask-dolphin.sh
-          bash -n src/ask-dolphin-run.sh
+          bash -n src/ask-ai-dolphin.sh
+          bash -n src/ask-ai-dolphin-run.sh
           bash -n install.sh
           bash -n uninstall.sh
           echo "All shell scripts OK"
 
       - name: Python syntax check
         run: |
-          python3 -m py_compile src/ask-dolphin-dialog.py
+          python3 -m py_compile src/ask-ai-dolphin-dialog.py
           echo "Python syntax OK"
 
       - name: Locale files validation
@@ -38,7 +38,7 @@ jobs:
           python3 .github/scripts/test-qt-compat.py
           echo "Qt compat OK"
 
-      - name: ASK_THEME style selection test
+      - name: ASK_AI_THEME style selection test
         run: |
           python3 .github/scripts/test-ask-theme.py
-          echo "ASK_THEME OK"
+          echo "ASK_AI_THEME OK"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-ask-dolphin-dialog.py — PyQt5 dialog for selecting/entering an AI query.
-Used from ask-dolphin.sh.
+ask-ai-dolphin-dialog.py — PyQt5 dialog for selecting/entering an AI query.
+Used from ask-ai-dolphin.sh.
 
 CLI arguments: preset queries.
 Stdin: a string describing selected files (optional).
@@ -26,10 +26,10 @@ def detect_dark_theme(app):
     """Detect if the OS theme is dark.
 
     Priority:
-      1. ASK_THEME env var ("dark" or "light")
+      1. ASK_AI_THEME env var ("dark" or "light")
       2. Auto-detect from QPalette.Window lightness
     """
-    theme_override = os.environ.get("ASK_THEME", "").strip().lower()
+    theme_override = os.environ.get("ASK_AI_THEME", "").strip().lower()
     if theme_override == "dark":
         return True
     if theme_override == "light":
@@ -266,15 +266,15 @@ QDialogButtonBox QPushButton {
 
 # --- Locale detection ---
 def detect_locale():
-    """Detect locale: ASK_LOCALE env → $LANG → en_EN.
+    """Detect locale: ASK_AI_LOCALE env → $LANG → en_EN.
 
     Priority:
-      1. ASK_LOCALE env var (can be set in ~/.ask_ai alongside ASK_MODEL)
+      1. ASK_AI_LOCALE env var (can be set in ~/.ask_ai alongside ASK_AI_MODEL)
       2. LANG env var (ru_RU/ru_UA/be_BY/uk_UA → ru_RU)
       3. Default: en_EN
     """
-    # ASK_LOCALE takes highest priority
-    ask_locale = os.environ.get("ASK_LOCALE", "")
+    # ASK_AI_LOCALE takes highest priority
+    ask_locale = os.environ.get("ASK_AI_LOCALE", "")
     if ask_locale in ("ru_RU", "ru"):
         return "ru_RU"
     if ask_locale in ("en_EN", "en"):

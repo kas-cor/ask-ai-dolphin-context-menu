@@ -65,7 +65,7 @@ def test_real_code_path():
 
     app = QApplication.instance() or QApplication(sys.argv[:1])
 
-    # Exact code from ask-dolphin-dialog.py main()
+    # Exact code from ask-ai-dolphin-dialog.py main()
     font = QFont()
     try:
         font.setFamilies(["Noto Sans", "Noto Color Emoji", "Segoe UI Emoji", "Symbola"])

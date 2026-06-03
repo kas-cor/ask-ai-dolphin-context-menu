@@ -72,7 +72,7 @@ msg() {
                     restart_terminal)  str="Или из терминала: killall dolphin && dolphin --new-window &" ;;
                     optional)          str="📝 Дополнительно:" ;;
                     edit_presets)      str="  - Изменить пресеты:  nano %s" ;;
-                    set_model)         str="  - Сменить модель:    nano ~/.ask_ai  (изменить ASK_MODEL)" ;;
+                    set_model)         str="  - Сменить модель:    nano ~/.ask_ai  (изменить ASK_AI_MODEL)" ;;
                     *)                 str="[msg_%s]" ;;
                 esac
                 ;;
@@ -101,7 +101,7 @@ msg() {
                     restart_terminal)  str="Or from terminal: killall dolphin && dolphin --new-window &" ;;
                     optional)          str="📝 Optional:" ;;
                     edit_presets)      str="  - Edit presets:  nano %s" ;;
-                    set_model)         str="  - Set model:     nano ~/.ask_ai  (change ASK_MODEL)" ;;
+                    set_model)         str="  - Set model:     nano ~/.ask_ai  (change ASK_AI_MODEL)" ;;
                     *)                 str="[msg_%s]" ;;
                 esac
                 ;;
@@ -126,7 +126,7 @@ GITHUB_TAR="https://github.com/$REPO/archive/$BRANCH.tar.gz"
 # --- Detect mode: local or curl pipe ---
 SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo "")"
 
-if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/src/ask-dolphin.sh" ]; then
+if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/src/ask-ai-dolphin.sh" ]; then
     # --- Curl pipe mode: download the project to a temp directory ---
     e downloading
 
@@ -197,9 +197,9 @@ mkdir -p "$CONFIG_DIR"
 
 # --- Copy scripts ---
 e copying_scripts "$BIN_DIR/"
-install -m 755 "$PROJECT_DIR/src/ask-dolphin.sh"         "$BIN_DIR/ask-dolphin.sh"
-install -m 755 "$PROJECT_DIR/src/ask-dolphin-run.sh"     "$BIN_DIR/ask-dolphin-run.sh"
-install -m 755 "$PROJECT_DIR/src/ask-dolphin-dialog.py"  "$BIN_DIR/ask-dolphin-dialog.py"
+install -m 755 "$PROJECT_DIR/src/ask-ai-dolphin.sh"         "$BIN_DIR/ask-ai-dolphin.sh"
+install -m 755 "$PROJECT_DIR/src/ask-ai-dolphin-run.sh"     "$BIN_DIR/ask-ai-dolphin-run.sh"
+install -m 755 "$PROJECT_DIR/src/ask-ai-dolphin-dialog.py"  "$BIN_DIR/ask-ai-dolphin-dialog.py"
 
 # --- Copy locale files ---
 cp "$PROJECT_DIR/locales/en_EN" "$LOCALE_DIR/en_EN"
@@ -207,22 +207,22 @@ cp "$PROJECT_DIR/locales/ru_RU" "$LOCALE_DIR/ru_RU"
 
 # --- Copy .desktop, replacing @HOME@ ---
 e installing_servicemenu "$SERVICEMENU_DIR/"
-sed "s|@HOME@|$HOME|g" "$PROJECT_DIR/servicemenu/ask-dolphin.desktop" \
-    > "$SERVICEMENU_DIR/ask-dolphin.desktop"
-chmod +x "$SERVICEMENU_DIR/ask-dolphin.desktop"
+sed "s|@HOME@|$HOME|g" "$PROJECT_DIR/servicemenu/ask-ai-dolphin.desktop" \
+    > "$SERVICEMENU_DIR/ask-ai-dolphin.desktop"
+chmod +x "$SERVICEMENU_DIR/ask-ai-dolphin.desktop"
 
 # --- Copy example config (choose by locale, don't overwrite existing) ---
-CONFIG_SRC="ask-dolphin.cfg.example"
+CONFIG_SRC="ask-ai-dolphin.cfg.example"
 if [ "$LOCALE" = "ru_RU" ]; then
-    RU_CONFIG="$PROJECT_DIR/config/ask-dolphin.cfg.ru_RU.example"
-    [ -f "$RU_CONFIG" ] && CONFIG_SRC="ask-dolphin.cfg.ru_RU.example"
+    RU_CONFIG="$PROJECT_DIR/config/ask-ai-dolphin.cfg.ru_RU.example"
+    [ -f "$RU_CONFIG" ] && CONFIG_SRC="ask-ai-dolphin.cfg.ru_RU.example"
 fi
 
-if [ ! -f "$CONFIG_DIR/ask-dolphin.cfg" ]; then
-    e creating_config "$CONFIG_DIR/ask-dolphin.cfg"
-    cp "$PROJECT_DIR/config/$CONFIG_SRC" "$CONFIG_DIR/ask-dolphin.cfg"
+if [ ! -f "$CONFIG_DIR/ask-ai-dolphin.cfg" ]; then
+    e creating_config "$CONFIG_DIR/ask-ai-dolphin.cfg"
+    cp "$PROJECT_DIR/config/$CONFIG_SRC" "$CONFIG_DIR/ask-ai-dolphin.cfg"
 else
-    e config_exists "$CONFIG_DIR/ask-dolphin.cfg"
+    e config_exists "$CONFIG_DIR/ask-ai-dolphin.cfg"
 fi
 
 # --- .ask_ai — automatic setup ---
@@ -266,5 +266,5 @@ e restart_dolphin
 e restart_terminal
 echo ""
 e optional
-e edit_presets "$CONFIG_DIR/ask-dolphin.cfg"
+e edit_presets "$CONFIG_DIR/ask-ai-dolphin.cfg"
 e set_model

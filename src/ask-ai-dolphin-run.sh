@@ -1,5 +1,5 @@
 #!/bin/bash
-# ask-dolphin-run.sh — universal runner for launching opencode in Konsole
+# ask-ai-dolphin-run.sh — universal runner for launching opencode in Konsole
 # Takes the query as $1, files as $2+
 # Shows a header and streams the response through glow
 
@@ -16,9 +16,9 @@ for f in "$@"; do
 done
 
 # --- Locale detection (same logic as dialog + install) ---
-# Priority: ASK_LOCALE env → $LANG → en_EN
+# Priority: ASK_AI_LOCALE env → $LANG → en_EN
 DETECTED_LOCALE="en_EN"
-case "${ASK_LOCALE:-}" in
+case "${ASK_AI_LOCALE:-}" in
     ru_RU|ru) DETECTED_LOCALE="ru_RU" ;;
     en_EN|en) DETECTED_LOCALE="en_EN" ;;
     *)
@@ -57,10 +57,10 @@ if [ ${#FILES[@]} -eq 0 ]; then
 fi
 
 # --- Theme detection ---
-# Priority: ASK_THEME env → COLORFGBG → light (default)
+# Priority: ASK_AI_THEME env → COLORFGBG → light (default)
 DETECTED_THEME="light"
 # Case-insensitive comparison using ${var,,} (bash 4+)
-ask_theme_lower="${ASK_THEME,,}"
+ask_theme_lower="${ASK_AI_THEME,,}"
 case "${ask_theme_lower:-}" in
     dark|d) DETECTED_THEME="dark" ;;
     light|l) DETECTED_THEME="light" ;;
@@ -125,7 +125,7 @@ if ! command -v opencode &> /dev/null; then
 fi
 
 # --- Determine model (from environment or default) ---
-MODEL="${ASK_MODEL:-opencode/deepseek-v4-flash-free}"
+MODEL="${ASK_AI_MODEL:-opencode/deepseek-v4-flash-free}"
 echo -e "${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
 echo ""
 

@@ -19,7 +19,7 @@ Select files/folders → right-click → **Ask AI** → choose a preset or type 
 
 - **Query presets** — configurable list of quick queries
 - **Custom query** — free-text input field for your own question
-- **Model selection** — via the `ASK_MODEL` environment variable (defaults to free `opencode/deepseek-v4-flash-free`)
+- **Model selection** — via the `ASK_AI_MODEL` environment variable (defaults to free `opencode/deepseek-v4-flash-free`)
 - **Streaming response** — output is piped through `glow` for real-time Markdown highlighting
 - **No selection fallback** — if nothing is selected, the current directory is used as context
 - **PyQt5 dialog** — polished UI styled for KDE Breeze
@@ -69,10 +69,10 @@ After installation (any method), restart Dolphin: **Ctrl+Shift+R**
 
 ### Query presets
 
-Edit `~/.config/ask-dolphin.cfg`:
+Edit `~/.config/ask-ai-dolphin.cfg`:
 
 ```bash
-nano ~/.config/ask-dolphin.cfg
+nano ~/.config/ask-ai-dolphin.cfg
 ```
 
 — one query per line, lines starting with `#` are ignored. Only the last **8 presets** are shown in the dialog.
@@ -85,24 +85,24 @@ Edit `~/.ask_ai` to configure:
 
 ```bash
 nano ~/.ask_ai
-# Change ASK_MODEL to any available model
-# Uncomment ASK_LOCALE or ASK_THEME to override auto-detection
+# Change ASK_AI_MODEL to any available model
+# Uncomment ASK_AI_LOCALE or ASK_AI_THEME to override auto-detection
 ```
 
 | Variable | Default | Description |
 |---|---|---|
-| `ASK_MODEL` | `opencode/deepseek-v4-flash-free` | AI model for opencode. List: `opencode models` |
+| `ASK_AI_MODEL` | `opencode/deepseek-v4-flash-free` | AI model for opencode. List: `opencode models` |
 | `GLOW_DISABLED` | unset | Set to `1` for raw output without glow formatting (`askr`) |
-| `ASK_LOCALE` | auto-detect (system `$LANG`) | Force UI language: `ru_RU` / `en_EN` |
-| `ASK_THEME` | auto-detect (system palette) | Force UI theme: `dark` / `light` |
+| `ASK_AI_LOCALE` | auto-detect (system `$LANG`) | Force UI language: `ru_RU` / `en_EN` |
+| `ASK_AI_THEME` | auto-detect (system palette) | Force UI theme: `dark` / `light` |
 
 **Examples:**
 
 ```bash
-export ASK_MODEL="opencode/deepseek-v4-flash"
+export ASK_AI_MODEL="opencode/deepseek-v4-flash"
 export GLOW_DISABLED=1
-export ASK_LOCALE="ru_RU"    # force Russian UI
-export ASK_THEME="dark"      # force dark theme
+export ASK_AI_LOCALE="ru_RU"    # force Russian UI
+export ASK_AI_THEME="dark"      # force dark theme
 ```
 
 See [Localization](#localization) for locale details. The theme auto-detects from your KDE color scheme and works for both the PyQt5 dialog and the Konsole runner header.
@@ -128,7 +128,7 @@ The project supports **English** and **Russian** (Русский). The language 
 | Component | English | Russian |
 |---|---|---|
 | Installer (`install.sh`) | All messages | Все сообщения |
-| Presets config | `ask-dolphin.cfg.example` | `ask-dolphin.cfg.ru_RU.example` |
+| Presets config | `ask-ai-dolphin.cfg.example` | `ask-ai-dolphin.cfg.ru_RU.example` |
 | PyQt5 dialog (title, labels, buttons) | ✅ | ✅ |
 | Runner header (Konsole) | ✅ | ✅ |
 | Service menu name (Dolphin) | 🤖 Ask AI | 🤖 Спросить AI |
@@ -137,7 +137,7 @@ The project supports **English** and **Russian** (Русский). The language 
 ### Locale detection priority
 
 1. **Installer:** CLI arg → `$LANG` → `en_EN`
-2. **Dialog / Runner:** `ASK_LOCALE` env var → `$LANG` → `en_EN`
+2. **Dialog / Runner:** `ASK_AI_LOCALE` env var → `$LANG` → `en_EN`
 
 ### How to change the language
 
@@ -148,19 +148,19 @@ The project supports **English** and **Russian** (Русский). The language 
 curl ...install.sh | bash -s ru_RU   # via curl pipe
 ```
 
-**After installation (dialog & runner)** — set `ASK_LOCALE` in `~/.ask_ai`:
+**After installation (dialog & runner)** — set `ASK_AI_LOCALE` in `~/.ask_ai`:
 
 ```bash
-export ASK_LOCALE="ru_RU"    # force Russian UI
+export ASK_AI_LOCALE="ru_RU"    # force Russian UI
 # or
-export ASK_LOCALE="en_EN"    # force English UI
+export ASK_AI_LOCALE="en_EN"    # force English UI
 ```
 
-Without `ASK_LOCALE`, the system `$LANG` variable is used (e.g., `LANG=ru_RU.UTF-8` → Russian). Russian is also detected from `ru_UA*`, `be_BY*`, and `uk_UA*` locales.
+Without `ASK_AI_LOCALE`, the system `$LANG` variable is used (e.g., `LANG=ru_RU.UTF-8` → Russian). Russian is also detected from `ru_UA*`, `be_BY*`, and `uk_UA*` locales.
 
 ### Config presets by locale
 
-During installation, the appropriate presets file is copied to `~/.config/ask-dolphin.cfg`:
+During installation, the appropriate presets file is copied to `~/.config/ask-ai-dolphin.cfg`:
 
 - **ru_RU** → Russian presets (`Опиши эти файлы`, `Найди ошибки…`, etc.)
 - **en_EN / other** → English presets (`Describe these files`, `Find bugs…`, etc.)
@@ -178,18 +178,18 @@ cp locales/en_EN locales/de_DE
 # Edit locales/de_DE — translate everything after the =
 ```
 
-2. **Install locale detection** — add your locale to the case statements in all 4 scripts. Look for the existing `ru_RU*|ru_UA*|be_BY*|uk_UA*` pattern and the `ASK_LOCALE` handling:
+2. **Install locale detection** — add your locale to the case statements in all 4 scripts. Look for the existing `ru_RU*|ru_UA*|be_BY*|uk_UA*` pattern and the `ASK_AI_LOCALE` handling:
 
-   - `install.sh` — add to both: `ru_RU*|ru_UA*|be_BY*|uk_UA*) DETECTED_LOCALE="ru_RU" ;;` and the `ASK_LOCALE` case block
-   - `src/ask-dolphin.sh` — same two locations
-   - `src/ask-dolphin-run.sh` — same two locations
-   - `src/ask-dolphin-dialog.py` — in `detect_locale()` function (both `ASK_LOCALE` and `LANG` checks)
+   - `install.sh` — add to both: `ru_RU*|ru_UA*|be_BY*|uk_UA*) DETECTED_LOCALE="ru_RU" ;;` and the `ASK_AI_LOCALE` case block
+   - `src/ask-ai-dolphin.sh` — same two locations
+   - `src/ask-ai-dolphin-run.sh` — same two locations
+   - `src/ask-ai-dolphin-dialog.py` — in `detect_locale()` function (both `ASK_AI_LOCALE` and `LANG` checks)
 
-3. **Create a preset config** (optional) — create `config/ask-dolphin.cfg.xx_XX.example` with translated preset queries
+3. **Create a preset config** (optional) — create `config/ask-ai-dolphin.cfg.xx_XX.example` with translated preset queries
 
 4. **Update install.sh** — add locale-based config selection logic for your locale (see existing `ru_RU` block)
 
-5. **Update the .desktop file** — add `Name[xx]=Your Translation` to `servicemenu/ask-dolphin.desktop`
+5. **Update the .desktop file** — add `Name[xx]=Your Translation` to `servicemenu/ask-ai-dolphin.desktop`
 
 6. **Document your locale** — add `README_xx_XX.md` (or update the existing documentation table)
 
@@ -197,9 +197,9 @@ cp locales/en_EN locales/de_DE
 
 **Key prefixes** for reference:
 - `install_*` — installer messages (`install.sh`)
-- `runner_*` — runner labels (`ask-dolphin-run.sh`)
-- `dialog_*` — dialog UI strings (`ask-dolphin-dialog.py`)
-- `sh_*` — shell entry point headers (`ask-dolphin.sh`)
+- `runner_*` — runner labels (`ask-ai-dolphin-run.sh`)
+- `dialog_*` — dialog UI strings (`ask-ai-dolphin-dialog.py`)
+- `sh_*` — shell entry point headers (`ask-ai-dolphin.sh`)
 
 ## Usage
 
@@ -214,13 +214,13 @@ cp locales/en_EN locales/de_DE
 ```
 ask-ai-dolphin-context-menu/
 ├── src/
-│   ├── ask-dolphin.sh          # Entry point — PyQt5 dialog + Konsole
-│   ├── ask-dolphin-run.sh      # Runner: stream opencode through glow
-│   └── ask-dolphin-dialog.py   # PyQt5 dialog with presets and input field
+│   ├── ask-ai-dolphin.sh          # Entry point — PyQt5 dialog + Konsole
+│   ├── ask-ai-dolphin-run.sh      # Runner: stream opencode through glow
+│   └── ask-ai-dolphin-dialog.py   # PyQt5 dialog with presets and input field
 ├── servicemenu/
-│   └── ask-dolphin.desktop     # Dolphin service menu file
+│   └── ask-ai-dolphin.desktop     # Dolphin service menu file
 ├── config/
-│   └── ask-dolphin.cfg.example # Example presets config
+│   └── ask-ai-dolphin.cfg.example # Example presets config
 ├── dot-ask_ai/
 │   └── dot-ask_ai.example      # Example ~/.ask_ai file
 ├── install.sh                  # Install script (works via curl too)
