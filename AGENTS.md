@@ -98,6 +98,7 @@ The installer also adds `source ~/.ask_ai` to the user's shell config (`.bashrc`
 
 ## Coding Conventions
 
+- **Conventional Commits:** All commits must follow `<type>: <description>` format. See [CONTRIBUTING.md](./CONTRIBUTING.md) for details. Types: `feat` (minor), `fix` (patch), `BREAKING CHANGE` (major), plus `docs`, `chore`, `refactor`, `test`, `ci`, `style`, `perf` (no release)
 - **Shell scripts:** `#!/bin/bash` (`install.sh`/`uninstall.sh` use `set -euo pipefail`; runner scripts relax strict mode for interactive use)
 - **Python:** PEP 8, PyQt5 for GUI
 - **Config files:** One item per line, `#` for comments
