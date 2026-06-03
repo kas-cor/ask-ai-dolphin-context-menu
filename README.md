@@ -77,16 +77,19 @@ nano ~/.config/ask-dolphin.cfg
 
 — one query per line, lines starting with `#` are ignored. Only the last **8 presets** are shown in the dialog.
 
-### AI model
+### AI model & locale
 
 The installer automatically creates `~/.ask_ai` with the default model and adds `source ~/.ask_ai` to your shell config (`.bashrc` / `.zshrc`).
 
-To change the model, edit:
+Edit `~/.ask_ai` to configure:
 
 ```bash
 nano ~/.ask_ai
 # Change ASK_MODEL to any of the available models
+# Uncomment ASK_LOCALE to force UI language
 ```
+
+**Model** — set via `ASK_MODEL`:
 
 List available models: `opencode models`
 
@@ -98,6 +101,13 @@ Examples:
 - `opencode/gpt-5.4-pro`
 - `opencode/gemini-3.5-flash`
 - `opencode/qwen3.5-plus`
+
+**Locale** — set via `ASK_LOCALE`:
+
+- `export ASK_LOCALE="ru_RU"` — force Russian UI (dialog, runner, entry point)
+- `export ASK_LOCALE="en_EN"` — force English UI
+
+By default, the language is auto-detected from your system `$LANG`. See [Localization](#localization) for details.
 
 ### `ask` / `askr` terminal functions
 
