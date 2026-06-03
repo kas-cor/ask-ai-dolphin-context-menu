@@ -82,7 +82,7 @@ The `~/.ask_ai` file provides two shell functions:
 
 ## Coding Conventions
 
-- **Shell scripts:** `#!/bin/bash` with `set -euo pipefail`
+- **Shell scripts:** `#!/bin/bash` (`install.sh`/`uninstall.sh` use `set -euo pipefail`; runner scripts relax strict mode for interactive use)
 - **Python:** PEP 8, PyQt5 for GUI
 - **Config files:** One item per line, `#` for comments
 - **Paths:** Use `SCRIPT_DIR` or `@HOME@` placeholder, never hardcode absolute paths
