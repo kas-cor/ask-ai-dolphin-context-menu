@@ -37,7 +37,7 @@ Konsole window — user sees formatted Markdown output
 | `src/ask-dolphin.sh` | Entry point: reads config, launches dialog, opens Konsole |
 | `src/ask-dolphin-run.sh` | Runner: pipes query to opencode, streams through glow |
 | `src/ask-dolphin-dialog.py` | PyQt5 dialog with preset buttons + text input (i18n: EN/RU) |
-| `servicemenu/ask-dolphin.desktop` | KDE service menu definition |
+| `servicemenu/ask-dolphin.desktop` | KDE service menu definition (i18n: EN/RU via `Name[ru]`) |
 | `config/ask-dolphin.cfg.example` | Example presets config (English) |
 | `config/ask-dolphin.cfg.ru_RU.example` | Example presets config (Russian) |
 | `dot-ask_ai/dot-ask_ai.example` | Example ~/.ask_ai for shell functions |
@@ -103,5 +103,6 @@ The installer also adds `source ~/.ask_ai` to the user's shell config (`.bashrc`
 - **i18n (localization):**
   - **Documentation:** English (`README.md`) and Russian (`README_ru.md`)
   - **Installer (`install.sh`):** All messages translated. Locale detection priority: CLI arg → `$LANG` → `en_EN`. Russian detected from `ru_RU*`, `ru_UA*`, `be_BY*`, `uk_UA*`. Override: `./install.sh ru_RU` or `curl ... | bash -s ru_RU`
+  - **Service menu (`ask-dolphin.desktop`):** KDE native localization via `Name[ru]="🤖 Спросить AI"` — KDE automatically selects the right name based on system locale; no script changes needed
   - **Config presets:** `config/ask-dolphin.cfg.example` (EN) and `config/ask-dolphin.cfg.ru_RU.example` (RU); auto-selected by locale during install
   - **PyQt5 dialog (`ask-dolphin-dialog.py`):** All UI strings (title, labels, buttons, placeholders) localized. Locale detection priority: `ASK_LOCALE` env var → `$LANG` → `en_EN`. Set `ASK_LOCALE=ru_RU` in `~/.ask_ai` to force Russian dialog regardless of system locale
