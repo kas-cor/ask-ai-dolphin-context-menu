@@ -36,11 +36,12 @@ Konsole window — user sees formatted Markdown output
 |---|---|
 | `src/ask-dolphin.sh` | Entry point: reads config, launches dialog, opens Konsole |
 | `src/ask-dolphin-run.sh` | Runner: pipes query to opencode, streams through glow |
-| `src/ask-dolphin-dialog.py` | PyQt5 dialog with preset buttons + text input |
+| `src/ask-dolphin-dialog.py` | PyQt5 dialog with preset buttons + text input (i18n: EN/RU) |
 | `servicemenu/ask-dolphin.desktop` | KDE service menu definition |
-| `config/ask-dolphin.cfg.example` | Example presets config |
+| `config/ask-dolphin.cfg.example` | Example presets config (English) |
+| `config/ask-dolphin.cfg.ru_RU.example` | Example presets config (Russian) |
 | `dot-ask_ai/dot-ask_ai.example` | Example ~/.ask_ai for shell functions |
-| `install.sh` | Install script (works locally or via curl pipe) |
+| `install.sh` | Install script with i18n (EN/RU), locale detection, locale-based config copy |
 | `uninstall.sh` | Uninstall script (self-contained) |
 
 ## Environment Variables
@@ -49,6 +50,7 @@ Konsole window — user sees formatted Markdown output
 |---|---|---|
 | `ASK_MODEL` | `opencode/deepseek-v4-flash-free` | AI model for opencode |
 | `GLOW_DISABLED` | unset | Set to `1` for raw output without glow formatting |
+| `ASK_LOCALE` | auto-detect | Force locale for the PyQt5 dialog (`ru_RU` / `ru` or `en_EN` / `en`) |
 
 ## Data Flow
 
@@ -73,6 +75,15 @@ Refactor this code
 Write tests for these files
 ```
 
+### Locale-based config selection
+
+During installation, `install.sh` copies the appropriate config file based on detected locale:
+
+- **ru_RU** → `config/ask-dolphin.cfg.ru_RU.example` (Russian presets)
+- **en_EN / other** → `config/ask-dolphin.cfg.example` (English presets)
+
+The existing config is never overwritten on reinstall.
+
 ## Terminal Functions
 
 The `~/.ask_ai` file provides two shell functions (created automatically by `install.sh`):
@@ -89,4 +100,8 @@ The installer also adds `source ~/.ask_ai` to the user's shell config (`.bashrc`
 - **Config files:** One item per line, `#` for comments
 - **Paths:** Use `SCRIPT_DIR` or `@HOME@` placeholder, never hardcode absolute paths
 - **Install:** `install.sh` copies to `~/.local/bin/` + `~/.local/share/kio/servicemenus/`, creates `~/.ask_ai` and adds `source ~/.ask_ai` to shell config
-- **i18n:** Documentation available in English (README.md) and Russian (README_ru.md)
+- **i18n (localization):**
+  - **Documentation:** English (`README.md`) and Russian (`README_ru.md`)
+  - **Installer (`install.sh`):** All messages translated. Locale detection priority: CLI arg → `$LANG` → `en_EN`. Russian detected from `ru_RU*`, `ru_UA*`, `be_BY*`, `uk_UA*`. Override: `./install.sh ru_RU` or `curl ... | bash -s ru_RU`
+  - **Config presets:** `config/ask-dolphin.cfg.example` (EN) and `config/ask-dolphin.cfg.ru_RU.example` (RU); auto-selected by locale during install
+  - **PyQt5 dialog (`ask-dolphin-dialog.py`):** All UI strings (title, labels, buttons, placeholders) localized. Locale detection priority: `ASK_LOCALE` env var → `$LANG` → `en_EN`. Set `ASK_LOCALE=ru_RU` in `~/.ask_ai` to force Russian dialog regardless of system locale
