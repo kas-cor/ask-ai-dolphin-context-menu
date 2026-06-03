@@ -439,9 +439,13 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle("Breeze")
 
-    # Default font with emoji fallback
+    # Default font with emoji fallback (setFamilies requires Qt ≥ 5.13)
     font = QFont()
-    font.setFamilies(["Noto Sans", "Noto Color Emoji", "Segoe UI Emoji", "Symbola"])
+    try:
+        font.setFamilies(["Noto Sans", "Noto Color Emoji", "Segoe UI Emoji", "Symbola"])
+    except AttributeError:
+        # Qt < 5.13 — fallback to single font family
+        font.setFamily("Noto Sans")
     font.setPointSize(10)
     app.setFont(font)
 
