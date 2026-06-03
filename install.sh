@@ -2,14 +2,130 @@
 # install.sh — Install Ask AI into the Dolphin context menu
 #
 # Supports two modes:
-#   1. Local:   ./install.sh — from a cloned repository
-#   2. One-liner:  curl -s https://raw.githubusercontent.com/kas-cor/ask-ai-dolphin-context-menu/main/install.sh | bash
+#   1. Local:   ./install.sh [locale]  — from a cloned repository
+#   2. One-liner:  curl -s https://raw.githubusercontent.com/kas-cor/ask-ai-dolphin-context-menu/main/install.sh | bash -s [locale]
+#
+# Locale: auto-detected from LANG, override with argument (ru_RU or en_EN).
+#   Examples:
+#     curl -s ...install.sh | bash -s ru_RU
+#     ./install.sh ru_RU
 #
 # Copies scripts to ~/.local/bin/
 # Installs the service menu to ~/.local/share/kio/servicemenus/
 # Copies the example config if it doesn't exist
 
 set -euo pipefail
+
+# --- Localization ---
+# Detect locale: CLI arg → $LANG → en_EN
+DETECTED_LOCALE="en_EN"
+if [ -n "${1:-}" ]; then
+    case "$1" in
+        ru_RU|ru) DETECTED_LOCALE="ru_RU" ;;
+        *)        DETECTED_LOCALE="en_EN" ;;
+    esac
+else
+    case "${LANG:-}" in
+        ru_RU*|ru_UA*|be_BY*|uk_UA*) DETECTED_LOCALE="ru_RU" ;;
+    esac
+fi
+
+# Supported locales
+LOCALE="$DETECTED_LOCALE"
+
+# Get localized message
+# Usage: msg "key" [args...]
+# Keys ending with _e are echoed with echo -e
+msg() {
+    local key="$1"
+    shift
+
+    # Resolve the string for the current locale
+    local str=""
+    case "$LOCALE" in
+        ru_RU)
+            case "$key" in
+                # Curl pipe mode
+                downloading)       str="📦 Загрузка проекта с GitHub..." ;;
+                curl_required)     str="❌ Требуется curl. Установите: sudo pacman -S curl" ;;
+
+                # Dependency checks
+                checking_deps)     str="🔍 Проверка зависимостей..." ;;
+                missing_deps)      str="❌ Отсутствуют необходимые зависимости:" ;;
+                install_them)      str="  Установите их:" ;;
+                opencode_url)      str="    # opencode: см. https://opencode.ai" ;;
+                glow_warning)      str="  ⚠️  glow не найден — форматирование Markdown недоступно" ;;
+                glow_install)      str="       Установите: sudo pacman -S glow" ;;
+
+                # Installation steps
+                installing)        str="📦 Установка Ask AI Dolphin context menu..." ;;
+                copying_scripts)   str="  → Копирование скриптов в %s" ;;
+                installing_servicemenu) str="  → Установка сервис-меню в %s" ;;
+                creating_config)   str="  → Создание конфига по умолчанию в %s" ;;
+                config_exists)     str="  → Конфиг уже существует в %s (оставлен)" ;;
+                creating_ask_ai)   str="  → Создание ~/.ask_ai с функциями терминала (ask / askr)" ;;
+                added_source)      str="  → Добавлено 'source ~/.ask_ai' в %s" ;;
+                no_shell_config)   str="  ⚠️  Не удалось определить файл конфигурации оболочки." ;;
+                add_manually)      str="       Добавьте эту строку вручную:" ;;
+                add_manually_cmd)  str="         echo 'source ~/.ask_ai' >> ~/.bashrc" ;;
+
+                # Completion
+                install_complete)  str="✅ Установка завершена!" ;;
+                restart_dolphin)   str="Чтобы применить, перезапустите Dolphin: Ctrl+Shift+R" ;;
+                restart_terminal)  str="Или из терминала: killall dolphin && dolphin --new-window &" ;;
+                optional)          str="📝 Дополнительно:" ;;
+                edit_presets)      str="  - Изменить пресеты:  nano %s" ;;
+                set_model)         str="  - Сменить модель:    nano ~/.ask_ai  (изменить ASK_MODEL)" ;;
+
+                # Default fallback — show key name
+                *)                 str="[msg_%s]" ;;
+            esac
+            ;;
+        *)
+            case "$key" in
+                downloading)       str="📦 Downloading project from GitHub..." ;;
+                curl_required)     str="❌ curl is required. Install: sudo pacman -S curl" ;;
+
+                checking_deps)     str="🔍 Checking dependencies..." ;;
+                missing_deps)      str="❌ Missing required dependencies:" ;;
+                install_them)      str="  Install them with:" ;;
+                opencode_url)      str="    # opencode: see https://opencode.ai" ;;
+                glow_warning)      str="  ⚠️  glow not found — Markdown formatting will not be available" ;;
+                glow_install)      str="       Install: sudo pacman -S glow" ;;
+
+                installing)        str="📦 Installing Ask AI Dolphin context menu..." ;;
+                copying_scripts)   str="  → Copying scripts to %s" ;;
+                installing_servicemenu) str="  → Installing service menu to %s" ;;
+                creating_config)   str="  → Creating default config at %s" ;;
+                config_exists)     str="  → Config already exists at %s (keeping)" ;;
+                creating_ask_ai)   str="  → Creating ~/.ask_ai with terminal functions (ask / askr)" ;;
+                added_source)      str="  → Added 'source ~/.ask_ai' to %s" ;;
+                no_shell_config)   str="  ⚠️  Could not detect shell config file." ;;
+                add_manually)      str="       Add this line manually:" ;;
+                add_manually_cmd)  str="         echo 'source ~/.ask_ai' >> ~/.bashrc" ;;
+
+                install_complete)  str="✅ Installation complete!" ;;
+                restart_dolphin)   str="To apply, restart Dolphin: Ctrl+Shift+R" ;;
+                restart_terminal)  str="Or from terminal: killall dolphin && dolphin --new-window &" ;;
+                optional)          str="📝 Optional:" ;;
+                edit_presets)      str="  - Edit presets:  nano %s" ;;
+                set_model)         str="  - Set model:     nano ~/.ask_ai  (change ASK_MODEL)" ;;
+
+                *)                 str="[msg_%s]" ;;
+            esac
+            ;;
+    esac
+
+    # If key contains _e suffix, use echo -e (handled by caller)
+    printf "$str\n" "$@"
+}
+
+# Shorthand: echo localized message
+e() { msg "$@"; }
+
+# Shorthand: echo -e localized message
+
+
 
 REPO="kas-cor/ask-ai-dolphin-context-menu"
 BRANCH="main"
@@ -21,16 +137,17 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo "")"
 
 if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/src/ask-dolphin.sh" ]; then
     # --- Curl pipe mode: download the project to a temp directory ---
-    echo "📦 Downloading project from GitHub..."
+    e downloading
 
     if ! command -v curl &>/dev/null; then
-        echo "❌ curl is required. Install: sudo pacman -S curl"
+        e curl_required
         exit 1
     fi
 
     TMP_DIR="$(mktemp -d)"
     curl -sfL "$GITHUB_TAR" | tar xz -C "$TMP_DIR" --strip-components=1
-    bash "$TMP_DIR/install.sh" && rc=0 || rc=$?
+    # Forward locale argument to the inner install.sh
+    bash "$TMP_DIR/install.sh" "$@" && rc=0 || rc=$?
     rm -rf "$TMP_DIR"
     exit "$rc"
 fi
@@ -38,7 +155,7 @@ fi
 # --- Local mode: use files from the repository ---
 
 # --- Dependency checks ---
-echo "🔍 Checking dependencies..."
+e checking_deps
 
 MISSING=""
 for cmd in python3 konsole opencode; do
@@ -53,20 +170,19 @@ fi
 
 if [ -n "$MISSING" ]; then
     echo ""
-    echo "❌ Missing required dependencies:"
+    e missing_deps
     echo -e "$MISSING"
     echo ""
-    echo "  Install them with:"
-    echo "    sudo pacman -S python-pyqt5 konsole"
-    echo "    # opencode: see https://opencode.ai"
+    e install_them
+    e opencode_url
     echo ""
     exit 1
 fi
 
 # Optional: glow
 if ! command -v glow &> /dev/null; then
-    echo "  ⚠️  glow not found — Markdown formatting will not be available"
-    echo "       Install: sudo pacman -S glow"
+    e glow_warning
+    e glow_install
 fi
 
 echo ""
@@ -76,7 +192,7 @@ BIN_DIR="$HOME/.local/bin"
 SERVICEMENU_DIR="$HOME/.local/share/kio/servicemenus"
 CONFIG_DIR="$HOME/.config"
 
-echo "📦 Installing Ask AI Dolphin context menu..."
+e installing
 
 # --- Create directories ---
 mkdir -p "$BIN_DIR"
@@ -84,29 +200,29 @@ mkdir -p "$SERVICEMENU_DIR"
 mkdir -p "$CONFIG_DIR"
 
 # --- Copy scripts ---
-echo "  → Copying scripts to $BIN_DIR/"
+e copying_scripts "$BIN_DIR/"
 install -m 755 "$PROJECT_DIR/src/ask-dolphin.sh"         "$BIN_DIR/ask-dolphin.sh"
 install -m 755 "$PROJECT_DIR/src/ask-dolphin-run.sh"     "$BIN_DIR/ask-dolphin-run.sh"
 install -m 755 "$PROJECT_DIR/src/ask-dolphin-dialog.py"  "$BIN_DIR/ask-dolphin-dialog.py"
 
 # --- Copy .desktop, replacing @HOME@ ---
-echo "  → Installing service menu to $SERVICEMENU_DIR/"
+e installing_servicemenu "$SERVICEMENU_DIR/"
 sed "s|@HOME@|$HOME|g" "$PROJECT_DIR/servicemenu/ask-dolphin.desktop" \
     > "$SERVICEMENU_DIR/ask-dolphin.desktop"
 chmod +x "$SERVICEMENU_DIR/ask-dolphin.desktop"
 
 # --- Copy example config (don't overwrite existing) ---
 if [ ! -f "$CONFIG_DIR/ask-dolphin.cfg" ]; then
-    echo "  → Creating default config at $CONFIG_DIR/ask-dolphin.cfg"
+    e creating_config "$CONFIG_DIR/ask-dolphin.cfg"
     cp "$PROJECT_DIR/config/ask-dolphin.cfg.example" "$CONFIG_DIR/ask-dolphin.cfg"
 else
-    echo "  → Config already exists at $CONFIG_DIR/ask-dolphin.cfg (keeping)"
+    e config_exists "$CONFIG_DIR/ask-dolphin.cfg"
 fi
 
 # --- .ask_ai — automatic setup ---
 ASK_AI_FILE="$HOME/.ask_ai"
 if [ ! -f "$ASK_AI_FILE" ]; then
-    echo "  → Creating ~/.ask_ai with terminal functions (ask / askr)"
+    e creating_ask_ai
     cp "$PROJECT_DIR/dot-ask_ai/dot-ask_ai.example" "$ASK_AI_FILE"
 fi
 
@@ -128,22 +244,21 @@ if [ -n "$SHELL_CONFIG" ]; then
         echo "" >> "$SHELL_CONFIG"
         echo "# Ask AI terminal functions" >> "$SHELL_CONFIG"
         echo "$LINE" >> "$SHELL_CONFIG"
-        echo "  → Added 'source ~/.ask_ai' to $SHELL_CONFIG"
+        e added_source "$SHELL_CONFIG"
     fi
 else
     echo ""
-    echo "  ⚠️  Could not detect shell config file."
-    echo "       Add this line manually:"
-    echo "         echo 'source ~/.ask_ai' >> ~/.bashrc"
+    e no_shell_config
+    e add_manually
+    e add_manually_cmd
 fi
 
 echo ""
-echo "✅ Installation complete!"
+e install_complete
 echo ""
-echo "To apply, restart Dolphin: Ctrl+Shift+R"
-echo "Or from terminal: killall dolphin && dolphin --new-window &"
+e restart_dolphin
+e restart_terminal
 echo ""
-echo "📝 Optional:"
-echo "  - Edit presets:  nano $CONFIG_DIR/ask-dolphin.cfg"
-echo "  - Set model:     nano ~/.ask_ai  (change ASK_MODEL)"
-
+e optional
+e edit_presets "$CONFIG_DIR/ask-dolphin.cfg"
+e set_model
