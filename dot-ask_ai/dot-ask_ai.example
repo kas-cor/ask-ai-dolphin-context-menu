@@ -10,6 +10,12 @@
 #   opencode/qwen3.5-plus
 export ASK_MODEL="opencode/deepseek-v4-flash-free"
 
+# UI language for the PyQt5 dialog and Konsole runner.
+# Uncomment to force Russian (auto-detected from $LANG by default):
+# export ASK_LOCALE="ru_RU"
+# Or to force English:
+# export ASK_LOCALE="en_EN"
+
 # ask / askr use ask-dolphin-run.sh (from the Ask AI Dolphin Context Menu project).
 # This script adds the current directory (PWD) as file context for the AI.
 # Requires prior installation: ./install.sh (see README.md)
