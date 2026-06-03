@@ -30,8 +30,7 @@ if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/src/ask-dolphin.sh" ]; then
 
     TMP_DIR="$(mktemp -d)"
     curl -sfL "$GITHUB_TAR" | tar xz -C "$TMP_DIR" --strip-components=1
-    bash "$TMP_DIR/install.sh"
-    rc=$?
+    bash "$TMP_DIR/install.sh" && rc=0 || rc=$?
     rm -rf "$TMP_DIR"
     exit "$rc"
 fi
