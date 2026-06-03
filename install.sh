@@ -66,7 +66,7 @@ msg() {
                     added_source)      str="  → Добавлено 'source ~/.ask_ai' в %s" ;;
                     no_shell_config)   str="  ⚠️  Не удалось определить файл конфигурации оболочки." ;;
                     add_manually)      str="       Добавьте эту строку вручную:" ;;
-                    add_manually_cmd)  str="         echo 'source ~/.ask_ai' >> ~/.bashrc" ;;
+                    add_manually_cmd)  str="         echo '[[ -f ~/.ask_ai ]] && . ~/.ask_ai' >> ~/.bashrc" ;;
                     install_complete)  str="✅ Установка завершена!" ;;
                     restart_dolphin)   str="Чтобы применить, перезапустите Dolphin: Ctrl+Shift+R" ;;
                     restart_terminal)  str="Или из терминала: killall dolphin && dolphin --new-window &" ;;
@@ -95,7 +95,7 @@ msg() {
                     added_source)      str="  → Added 'source ~/.ask_ai' to %s" ;;
                     no_shell_config)   str="  ⚠️  Could not detect shell config file." ;;
                     add_manually)      str="       Add this line manually:" ;;
-                    add_manually_cmd)  str="         echo 'source ~/.ask_ai' >> ~/.bashrc" ;;
+                    add_manually_cmd)  str="         echo '[[ -f ~/.ask_ai ]] && . ~/.ask_ai' >> ~/.bashrc" ;;
                     install_complete)  str="✅ Installation complete!" ;;
                     restart_dolphin)   str="To apply, restart Dolphin: Ctrl+Shift+R" ;;
                     restart_terminal)  str="Or from terminal: killall dolphin && dolphin --new-window &" ;;
@@ -244,9 +244,9 @@ elif [ -f "$HOME/.profile" ]; then
     SHELL_CONFIG="$HOME/.profile"
 fi
 
-LINE="source \"$ASK_AI_FILE\""
+LINE='[[ -f ~/.ask_ai ]] && . ~/.ask_ai'
 if [ -n "$SHELL_CONFIG" ]; then
-    if ! grep -Fxq "$LINE" "$SHELL_CONFIG" 2>/dev/null; then
+    if ! grep -Fxq '[[ -f ~/.ask_ai ]] && . ~/.ask_ai' "$SHELL_CONFIG" 2>/dev/null; then
         echo "" >> "$SHELL_CONFIG"
         echo "# Ask AI terminal functions" >> "$SHELL_CONFIG"
         echo "$LINE" >> "$SHELL_CONFIG"
@@ -258,6 +258,7 @@ else
     e add_manually
     e add_manually_cmd
 fi
+
 
 echo ""
 e install_complete
