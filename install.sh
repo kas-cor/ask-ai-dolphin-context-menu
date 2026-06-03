@@ -103,14 +103,14 @@ else
     echo "  → Config already exists at $CONFIG_DIR/ask-dolphin.cfg (keeping)"
 fi
 
-# --- .ask_ai — автоматическая установка ---
+# --- .ask_ai — automatic setup ---
 ASK_AI_FILE="$HOME/.ask_ai"
 if [ ! -f "$ASK_AI_FILE" ]; then
     echo "  → Creating ~/.ask_ai with terminal functions (ask / askr)"
     cp "$PROJECT_DIR/dot-ask_ai/dot-ask_ai.example" "$ASK_AI_FILE"
 fi
 
-# --- Подключаем source ~/.ask_ai в shell config ---
+# --- Add source ~/.ask_ai to shell config ---
 SHELL_CONFIG=""
 if [ -f "$HOME/.bashrc" ]; then
     SHELL_CONFIG="$HOME/.bashrc"
