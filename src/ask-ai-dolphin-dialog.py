@@ -58,11 +58,6 @@ QLabel#headerTitle {
     font-weight: bold;
 }
 
-QLabel#headerSubtitle {
-    color: #d6eaff;
-    font-size: 12px;
-}
-
 QFrame#fileFrame {
     background-color: #fcfcfc;
     border: 1px solid #bdc3c7;
@@ -168,11 +163,6 @@ QLabel#headerTitle {
     color: #ffffff;
     font-size: 16px;
     font-weight: bold;
-}
-
-QLabel#headerSubtitle {
-    color: #b0d0f0;
-    font-size: 12px;
 }
 
 QFrame#fileFrame {
@@ -360,14 +350,6 @@ class AskDialog(QDialog):
         title = QLabel(hdr_title)
         title.setObjectName("headerTitle")
         hdr_layout.addWidget(title)
-
-        if file_info:
-            # Show only the first line (label like "Selected files:")
-            first_line = file_info.split("\n", 1)[0]
-            sub = QLabel(first_line)
-            sub.setObjectName("headerSubtitle")
-            sub.setWordWrap(True)
-            hdr_layout.addWidget(sub)
 
         layout.addWidget(header)
 
