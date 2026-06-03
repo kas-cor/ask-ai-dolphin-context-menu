@@ -10,10 +10,14 @@
 #   opencode/qwen3.5-plus
 export ASK_MODEL="opencode/deepseek-v4-flash-free"
 
+# ask / askr используют ask-dolphin-run.sh (из проекта Ask AI Dolphin Context Menu).
+# Этот скрипт добавляет контекст текущей директории (PWD) как файлы для AI.
+# Требуется предварительная установка: ./install.sh (см. README.md)
 ask() {
   ~/.local/bin/ask-dolphin-run.sh "$*"
 }
 
+# Без форматирования glow (raw)
 askr() {
   GLOW_DISABLED=1 ~/.local/bin/ask-dolphin-run.sh "$*"
 }
