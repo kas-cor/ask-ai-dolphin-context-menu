@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v1.1] — 2026-06-03
+## [1.1.0] — 2026-06-03
 
 ### 🎨 Added
 - **Dark/Light theme support** for PyQt5 dialog — auto-detected from KDE color scheme
@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - dot-ask_ai.example: `GLOW_DISABLED` documented as permanent env var, `ASK_AI_LOCALE`, `ASK_AI_THEME` examples
 - Environment variable table added to both README.md and README_ru.md
 
-## [v1.0] — 2026-06-03
+## [1.0.0] — 2026-06-03
 
 ### 🚀 Initial release
 - KDE Dolphin context menu integration via service menu
@@ -71,5 +71,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AGENTS.md for AI coding assistants
 - GitHub badges (CI, License, Release, Platform)
 
-[v1.1]: https://github.com/kas-cor/ask-ai-dolphin-context-menu/releases/tag/v1.1
-[v1.0]: https://github.com/kas-cor/ask-ai-dolphin-context-menu/releases/tag/v1.0
+[1.1.0]: https://github.com/kas-cor/ask-ai-dolphin-context-menu/releases/tag/v1.1
+[1.0.0]: https://github.com/kas-cor/ask-ai-dolphin-context-menu/releases/tag/v1.0
