@@ -75,10 +75,12 @@ Write tests for these files
 
 ## Terminal Functions
 
-The `~/.ask_ai` file provides two shell functions:
+The `~/.ask_ai` file provides two shell functions (created automatically by `install.sh`):
 
 - `ask "..."` — sends query with current directory as context, streams through glow
 - `askr "..."` — same but raw output (no glow formatting)
+
+The installer also adds `source ~/.ask_ai` to the user's shell config (`.bashrc` / `.zshrc`).
 
 ## Coding Conventions
 
@@ -86,5 +88,5 @@ The `~/.ask_ai` file provides two shell functions:
 - **Python:** PEP 8, PyQt5 for GUI
 - **Config files:** One item per line, `#` for comments
 - **Paths:** Use `SCRIPT_DIR` or `@HOME@` placeholder, never hardcode absolute paths
-- **Install:** `install.sh` copies to `~/.local/bin/` + `~/.local/share/kio/servicemenus/`
+- **Install:** `install.sh` copies to `~/.local/bin/` + `~/.local/share/kio/servicemenus/`, creates `~/.ask_ai` and adds `source ~/.ask_ai` to shell config
 - **i18n:** Documentation available in English (README.md) and Russian (README_ru.md)

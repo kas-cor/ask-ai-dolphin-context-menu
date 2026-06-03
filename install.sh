@@ -103,13 +103,38 @@ else
     echo "  → Config already exists at $CONFIG_DIR/ask-dolphin.cfg (keeping)"
 fi
 
-# --- .ask_ai example (optional) ---
-if [ ! -f "$HOME/.ask_ai" ]; then
+# --- .ask_ai — автоматическая установка ---
+ASK_AI_FILE="$HOME/.ask_ai"
+if [ ! -f "$ASK_AI_FILE" ]; then
+    echo "  → Creating ~/.ask_ai with terminal functions (ask / askr)"
+    cp "$PROJECT_DIR/dot-ask_ai/dot-ask_ai.example" "$ASK_AI_FILE"
+fi
+
+# --- Подключаем source ~/.ask_ai в shell config ---
+SHELL_CONFIG=""
+if [ -f "$HOME/.bashrc" ]; then
+    SHELL_CONFIG="$HOME/.bashrc"
+elif [ -f "$HOME/.zshrc" ]; then
+    SHELL_CONFIG="$HOME/.zshrc"
+elif [ -f "$HOME/.bash_profile" ]; then
+    SHELL_CONFIG="$HOME/.bash_profile"
+elif [ -f "$HOME/.profile" ]; then
+    SHELL_CONFIG="$HOME/.profile"
+fi
+
+LINE="source \"$ASK_AI_FILE\""
+if [ -n "$SHELL_CONFIG" ]; then
+    if ! grep -Fxq "$LINE" "$SHELL_CONFIG" 2>/dev/null; then
+        echo "" >> "$SHELL_CONFIG"
+        echo "# Ask AI terminal functions" >> "$SHELL_CONFIG"
+        echo "$LINE" >> "$SHELL_CONFIG"
+        echo "  → Added 'source ~/.ask_ai' to $SHELL_CONFIG"
+    fi
+else
     echo ""
-    echo "ℹ️  You don't have ~/.ask_ai yet. You can use the example:"
-    echo "     source <(curl -s $GITHUB_RAW/dot-ask_ai/dot-ask_ai.example)"
-    echo "     Or copy: cat $GITHUB_RAW/dot-ask_ai/dot-ask_ai.example > ~/.ask_ai"
-    echo "     Then add 'source ~/.ask_ai' to your ~/.bashrc or ~/.zshrc"
+    echo "  ⚠️  Could not detect shell config file."
+    echo "       Add this line manually:"
+    echo "         echo 'source ~/.ask_ai' >> ~/.bashrc"
 fi
 
 echo ""
@@ -120,5 +145,5 @@ echo "Or from terminal: killall dolphin && dolphin --new-window &"
 echo ""
 echo "📝 Optional:"
 echo "  - Edit presets:  nano $CONFIG_DIR/ask-dolphin.cfg"
-echo "  - Set model:     export ASK_MODEL=\"opencode/claude-sonnet-4-6\""
-echo "                    (add to ~/.ask_ai or ~/.bashrc)"
+echo "  - Set model:     nano ~/.ask_ai  (change ASK_MODEL)"
+

@@ -70,10 +70,13 @@ nano ~/.config/ask-dolphin.cfg
 
 ### Модель AI
 
-Добавьте в `~/.ask_ai` (или `~/.bashrc`):
+Установщик автоматически создаёт `~/.ask_ai` с моделью по умолчанию и добавляет `source ~/.ask_ai` в ваш shell config (`.bashrc` / `.zshrc`).
+
+Чтобы сменить модель, отредактируйте:
 
 ```bash
-export ASK_MODEL="opencode/deepseek-v4-flash-free"
+nano ~/.ask_ai
+# Поменяйте ASK_MODEL на любую из доступных моделей
 ```
 
 Список доступных моделей: `opencode models`
@@ -89,19 +92,15 @@ export ASK_MODEL="opencode/deepseek-v4-flash-free"
 
 ### Функции `ask` / `askr` (терминал)
 
-В `~/.ask_ai` можно добавить функции для быстрых запросов из терминала:
+Установщик настраивает их автоматически. После перезапуска терминала используйте напрямую:
 
 ```bash
-source ~/.ask_ai
 ask "Найди баги в этом коде"
 askr "Просто покажи ответ"
 ```
 
-Пример `~/.ask_ai` можно взять прямо из репозитория:
-
-```bash
-curl -s https://raw.githubusercontent.com/kas-cor/ask_ai_dolphin_context_menu/main/dot-ask_ai/dot-ask_ai.example > ~/.ask_ai
-```
+- `ask "..."` — стриминг через `glow` (форматированный Markdown)
+- `askr "..."` — raw-вывод (без форматирования)
 
 ## Использование
 

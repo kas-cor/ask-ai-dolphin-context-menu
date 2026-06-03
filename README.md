@@ -70,10 +70,13 @@ nano ~/.config/ask-dolphin.cfg
 
 ### AI model
 
-Add to `~/.ask_ai` (or `~/.bashrc`):
+The installer automatically creates `~/.ask_ai` with the default model and adds `source ~/.ask_ai` to your shell config (`.bashrc` / `.zshrc`).
+
+To change the model, edit:
 
 ```bash
-export ASK_MODEL="opencode/deepseek-v4-flash-free"
+nano ~/.ask_ai
+# Change ASK_MODEL to any of the available models
 ```
 
 List available models: `opencode models`
@@ -89,19 +92,15 @@ Examples:
 
 ### `ask` / `askr` terminal functions
 
-Add these to `~/.ask_ai` for quick terminal queries:
+The installer sets these up automatically. After reopening your terminal, use them directly:
 
 ```bash
-source ~/.ask_ai
 ask "Find bugs in this code"
 askr "Show me the answer"
 ```
 
-Get the example file from the repository:
-
-```bash
-curl -s https://raw.githubusercontent.com/kas-cor/ask_ai_dolphin_context_menu/main/dot-ask_ai/dot-ask_ai.example > ~/.ask_ai
-```
+- `ask "..."` — streams response through `glow` (formatted Markdown)
+- `askr "..."` — raw output (no formatting)
 
 ## Usage
 
