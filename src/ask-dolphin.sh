@@ -32,6 +32,12 @@ if [ ${#ASK_PRESETS[@]} -eq 0 ]; then
     )
 fi
 
+# Limit to last 8 presets (dialog fits max 8 buttons comfortably)
+MAX_PRESETS=8
+if [ ${#ASK_PRESETS[@]} -gt $MAX_PRESETS ]; then
+    ASK_PRESETS=("${ASK_PRESETS[@]: -$MAX_PRESETS}")
+fi
+
 # Filter out empty arguments (in case Dolphin passes an empty string)
 FILES=()
 for f in "$@"; do

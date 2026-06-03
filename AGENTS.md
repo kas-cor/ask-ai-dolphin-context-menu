@@ -61,7 +61,7 @@ Konsole window — user sees formatted Markdown output
 
 ## Config Presets
 
-Located at `~/.config/ask-dolphin.cfg`. One query per line, `#` for comments. If the file is missing, built-in fallbacks are used:
+Located at `~/.config/ask-dolphin.cfg`. One query per line, `#` for comments. Only the last **8 presets** are shown in the dialog (to keep the UI compact). If the file is missing, built-in fallbacks are used:
 
 ```
 Describe these files

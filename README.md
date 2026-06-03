@@ -66,7 +66,7 @@ Edit `~/.config/ask-dolphin.cfg`:
 nano ~/.config/ask-dolphin.cfg
 ```
 
-— one query per line, lines starting with `#` are ignored.
+— one query per line, lines starting with `#` are ignored. Only the last **8 presets** are shown in the dialog.
 
 ### AI model
 
