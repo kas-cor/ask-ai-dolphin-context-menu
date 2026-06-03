@@ -65,6 +65,22 @@ QLabel#fileLabel {
     line-height: 1.4;
 }
 
+QLabel#presetsLabel {
+    color: #62686e;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 0;
+    margin: 0;
+}
+
+QLabel#inputLabel {
+    color: #62686e;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 0;
+    margin-top: 4px;
+}
+
 QPushButton {
     background-color: #fcfcfc;
     border: 1px solid #bdc3c7;
@@ -297,102 +313,6 @@ LOCALE_STRINGS = load_locale(LOCALE)
 def _(key, default=""):
     """Get localized string by key, fallback to default."""
     return LOCALE_STRINGS.get(key, default)
-
-
-# --- QSS style for KDE Breeze ---
-STYLE = """
-QDialog {
-    background-color: #eff0f1;
-}
-
-QFrame#headerFrame {
-    background-color: #1d99f3;
-    border-radius: 6px;
-    padding: 12px;
-}
-
-QLabel#headerTitle {
-    color: #ffffff;
-    font-size: 16px;
-    font-weight: bold;
-}
-
-QLabel#headerSubtitle {
-    color: #d6eaff;
-    font-size: 12px;
-}
-
-QFrame#fileFrame {
-    background-color: #fcfcfc;
-    border: 1px solid #bdc3c7;
-    border-radius: 5px;
-    padding: 10px;
-}
-
-QLabel#fileLabel {
-    color: #31363b;
-    font-size: 12px;
-    line-height: 1.4;
-}
-
-QPushButton {
-    background-color: #fcfcfc;
-    border: 1px solid #bdc3c7;
-    border-radius: 4px;
-    padding: 8px 16px;
-    font-size: 12px;
-    color: #31363b;
-    min-height: 20px;
-}
-
-QPushButton:hover {
-    background-color: #d6eaff;
-    border-color: #1d99f3;
-    color: #1d99f3;
-}
-
-QPushButton:pressed {
-    background-color: #b3d9f9;
-    border-color: #1a7dc9;
-}
-
-QLineEdit {
-    background-color: #fcfcfc;
-    border: 1px solid #bdc3c7;
-    border-radius: 4px;
-    padding: 8px 12px;
-    font-size: 13px;
-    color: #31363b;
-    min-height: 22px;
-}
-
-QLineEdit:focus {
-    border-color: #1d99f3;
-    background-color: #ffffff;
-}
-
-QDialogButtonBox QPushButton {
-    min-width: 80px;
-    min-height: 16px;
-    padding: 6px 20px;
-    font-size: 12px;
-}
-
-#okButton {
-    background-color: #1d99f3;
-    border-color: #1a7dc9;
-    color: #ffffff;
-    font-weight: bold;
-}
-
-#okButton:hover {
-    background-color: #2ea6ff;
-}
-
-#okButton:pressed {
-    background-color: #1a7dc9;
-}
-"""
 
 
 class AskDialog(QDialog):
