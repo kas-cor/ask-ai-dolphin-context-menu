@@ -215,7 +215,9 @@ class AskDialog(QDialog):
         hdr_layout.addWidget(title)
 
         if file_info:
-            sub = QLabel(file_info.replace("\\n", "  ·  "))
+            # Show only the first line (label like "Selected files:")
+            first_line = file_info.split("\n", 1)[0]
+            sub = QLabel(first_line)
             sub.setObjectName("headerSubtitle")
             sub.setWordWrap(True)
             hdr_layout.addWidget(sub)
@@ -223,13 +225,13 @@ class AskDialog(QDialog):
         layout.addWidget(header)
 
         # --- File info card (if multiple lines) ---
-        if file_info and "\\n" in file_info:
+        if file_info and "\n" in file_info:
             file_frame = QFrame()
             file_frame.setObjectName("fileFrame")
             fl_layout = QVBoxLayout(file_frame)
             fl_layout.setContentsMargins(12, 8, 12, 8)
 
-            file_label = QLabel(file_info.replace("\\n", "\n"))
+            file_label = QLabel(file_info)
             file_label.setObjectName("fileLabel")
             file_label.setWordWrap(True)
             file_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -296,8 +298,10 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle("Breeze")
 
-    # Default font
-    font = QFont("Noto Sans", 10)
+    # Default font with emoji fallback
+    font = QFont()
+    font.setFamilies(["Noto Sans", "Noto Color Emoji", "Segoe UI Emoji", "Symbola"])
+    font.setPointSize(10)
     app.setFont(font)
 
     dialog = AskDialog(presets, file_info, locale=LOCALE)
