@@ -7,6 +7,40 @@
 
 set -euo pipefail
 
+# --- Проверка зависимостей ---
+echo "🔍 Checking dependencies..."
+
+MISSING=""
+for cmd in python3 konsole opencode; do
+    if ! command -v "$cmd" &> /dev/null; then
+        MISSING="$MISSING  • $cmd\n"
+    fi
+done
+
+if ! python3 -c "import PyQt5" 2>/dev/null; then
+    MISSING="$MISSING  • python3-PyQt5\n"
+fi
+
+if [ -n "$MISSING" ]; then
+    echo ""
+    echo "❌ Missing required dependencies:"
+    echo -e "$MISSING"
+    echo ""
+    echo "Install them with:"
+    echo "  sudo pacman -S python-pyqt5 konsole"
+    echo "  # opencode: see https://opencode.ai"
+    echo ""
+    exit 1
+fi
+
+# Опционально: glow
+if ! command -v glow &> /dev/null; then
+    echo "  ⚠️  glow not found — Markdown formatting will not be available"
+    echo "     Install: sudo pacman -S glow"
+fi
+
+echo ""
+
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BIN_DIR="$HOME/.local/bin"
 SERVICEMENU_DIR="$HOME/.local/share/kio/servicemenus"
