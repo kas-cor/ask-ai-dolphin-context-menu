@@ -68,7 +68,7 @@ nano ~/.config/ask-dolphin.cfg
 
 ### Модель AI
 
-Добавьте в `~/.ask` (или `~/.bashrc`):
+Добавьте в `~/.ask_ai` (или `~/.bashrc`):
 
 ```bash
 export ASK_MODEL="opencode/deepseek-v4-flash-free"
@@ -87,18 +87,18 @@ export ASK_MODEL="opencode/deepseek-v4-flash-free"
 
 ### Функции `ask` / `askr` (терминал)
 
-В `~/.ask` можно добавить функции для быстрых запросов из терминала:
+В `~/.ask_ai` можно добавить функции для быстрых запросов из терминала:
 
 ```bash
-source ~/.ask
+source ~/.ask_ai
 ask "Найди баги в этом коде"
 askr "Просто покажи ответ"
 ```
 
-Пример `~/.ask` можно взять прямо из репозитория:
+Пример `~/.ask_ai` можно взять прямо из репозитория:
 
 ```bash
-curl -s https://raw.githubusercontent.com/kas-cor/ask_ai_dolphin_context_menu/main/dot-ask/dot-ask.example > ~/.ask
+curl -s https://raw.githubusercontent.com/kas-cor/ask_ai_dolphin_context_menu/main/dot-ask_ai/dot-ask_ai.example > ~/.ask_ai
 ```
 
 ## Использование
@@ -121,8 +121,8 @@ ask_ai_dolphin_context_menu/
 │   └── ask-dolphin.desktop     # Сервис-меню для Dolphin
 ├── config/
 │   └── ask-dolphin.cfg.example # Пример конфига с пресетами
-├── dot-ask/
-│   └── dot-ask.example         # Пример ~/.ask
+├── dot-ask_ai/
+│   └── dot-ask_ai.example      # Пример ~/.ask_ai
 ├── install.sh                  # Скрипт установки (работает и через curl)
 ├── uninstall.sh                # Скрипт удаления (работает и через curl)
 └── README.md                   # Этот файл

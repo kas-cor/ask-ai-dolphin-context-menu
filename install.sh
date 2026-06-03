@@ -103,13 +103,13 @@ else
     echo "  → Config already exists at $CONFIG_DIR/ask-dolphin.cfg (keeping)"
 fi
 
-# --- Пример .ask (опционально) ---
-if [ ! -f "$HOME/.ask" ]; then
+# --- Пример .ask_ai (опционально) ---
+if [ ! -f "$HOME/.ask_ai" ]; then
     echo ""
-    echo "ℹ️  You don't have ~/.ask yet. You can use the example:"
-    echo "   source <(curl -s $GITHUB_RAW/dot-ask/dot-ask.example)"
-    echo "   Or copy from the config: cat $GITHUB_RAW/dot-ask/dot-ask.example > ~/.ask"
-    echo "   Then add 'source ~/.ask' to your ~/.bashrc or ~/.zshrc"
+    echo "ℹ️  You don't have ~/.ask_ai yet. You can use the example:"
+    echo "   source <(curl -s $GITHUB_RAW/dot-ask_ai/dot-ask_ai.example)"
+    echo "   Or copy from the config: cat $GITHUB_RAW/dot-ask_ai/dot-ask_ai.example > ~/.ask_ai"
+    echo "   Then add 'source ~/.ask_ai' to your ~/.bashrc or ~/.zshrc"
 fi
 
 echo ""
@@ -121,4 +121,4 @@ echo ""
 echo "📝 Optional:"
 echo "  - Edit presets:  nano $CONFIG_DIR/ask-dolphin.cfg"
 echo "  - Set model:     export ASK_MODEL=\"opencode/claude-sonnet-4-6\""
-echo "                    (add to ~/.ask or ~/.bashrc)"
+echo "                    (add to ~/.ask_ai or ~/.bashrc)"
