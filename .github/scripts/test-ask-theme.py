@@ -80,7 +80,7 @@ def test_ask_theme_case_insensitive():
             del os.environ["ASK_AI_THEME"]
             if old_val is not None:
                 os.environ["ASK_AI_THEME"] = old_val
-        assert result is True, f"ASK_AI_THEME={variant} should return True, got {result}"
+        assert result is True, f"ASK_AI_THEME={variant!r} should return True, got {result}"
     print("  ✅ ASK_AI_THEME=DARK/Dark/dark/D → True (case insensitive)")
 
 

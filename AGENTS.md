@@ -50,10 +50,10 @@ Konsole window — user sees formatted Markdown output
 
 | Variable | Default | Description |
 |---|---|---|
-| `ASK_AI_MODEL` | `opencode/deepseek-v4-flash-free` | AI model for opencode |
-| `GLOW_DISABLED` | unset | Set to `1` for raw output without glow formatting |
-| `ASK_AI_LOCALE` | auto-detect | Force locale for all UI components (`ru_RU` / `ru` or `en_EN` / `en`) |
-| `ASK_AI_THEME` | auto-detect | Force UI theme for dialog and runner (`dark` or `light`) |
+| `ASK_AI_MODEL` | `opencode/deepseek-v4-flash-free` | AI model for opencode. List: `opencode models` |
+| `GLOW_DISABLED` | unset | Set to `1` for raw output without glow formatting (`askr`) |
+| `ASK_AI_LOCALE` | auto-detect (system `$LANG`) | Force UI language: `ru_RU` / `en_EN` |
+| `ASK_AI_THEME` | auto-detect (system palette) | Force UI theme: `dark` / `light` |
 
 ## Data Flow
 
@@ -119,3 +119,15 @@ The installer also adds `source ~/.ask_ai` to the user's shell config (`.bashrc`
   - **Config presets:** `config/ask-ai-dolphin.cfg.example` (EN) and `config/ask-ai-dolphin.cfg.ru_RU.example` (RU); auto-selected by locale during install
   - **Locale detection:** Priority for all components: `ASK_AI_LOCALE` env var → `$LANG` → `en_EN`. Russian detected from `ru_RU*`, `ru_UA*`, `be_BY*`, `uk_UA*`. Override with `./install.sh ru_RU` or set `ASK_AI_LOCALE=ru_RU` in `~/.ask_ai`
   - **Adding a new locale:** Create `locales/xx_XX` with all keys translated, add locale code to `detect_locale()`/case blocks in all 4 scripts (`install.sh`, `ask-ai-dolphin.sh`, `ask-ai-dolphin-run.sh`, `ask-ai-dolphin-dialog.py`), optionally create a preset config `config/ask-ai-dolphin.cfg.xx_XX.example` and update `install.sh` config selection logic, add `Name[xx]` to `.desktop` file
+
+## CI Tests
+
+Located in `.github/scripts/`, run on every push/PR via `.github/workflows/ci.yml`.
+
+| File | Purpose |
+|---|---|
+| `validate-locales.py` | Validates locale files: UTF-8, `KEY="value"` format, no duplicates, cross-file key parity |
+| `test-qt-compat.py` | Tests `setFamilies()` try/except fallback for Qt < 5.13: normal path, mock fallback, real code path |
+| `test-ask-theme.py` | Tests `ASK_AI_THEME=dark\|light\|d\|l` selection (case-insensitive), auto-detect from palette, `STYLE_DARK ≠ STYLE_LIGHT` |
+
+CI pipeline: `Shell syntax` → `Python syntax` → `Locale validation` → `Install PyQt5` → `Qt compat test` → `ASK_AI_THEME test`.
