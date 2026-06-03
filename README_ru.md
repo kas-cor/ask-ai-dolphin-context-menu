@@ -77,7 +77,7 @@ nano ~/.config/ask-dolphin.cfg
 
 — один запрос на строку, строки с `#` игнорируются. В диалоге показываются только последние **8 пресетов**.
 
-### Модель AI и язык
+### Переменные окружения
 
 Установщик автоматически создаёт `~/.ask_ai` с моделью по умолчанию и добавляет `source ~/.ask_ai` в ваш shell config (`.bashrc` / `.zshrc`).
 
@@ -85,36 +85,27 @@ nano ~/.config/ask-dolphin.cfg
 
 ```bash
 nano ~/.ask_ai
-# Поменяйте ASK_MODEL на любую из доступных моделей
-# Раскомментируйте ASK_LOCALE для смены языка интерфейса
+# Поменяйте ASK_MODEL на любую доступную модель
+# Раскомментируйте ASK_LOCALE или ASK_THEME
 ```
 
-**Модель** — задаётся через `ASK_MODEL`:
+| Переменная | По умолчанию | Описание |
+|---|---|---|
+| `ASK_MODEL` | `opencode/deepseek-v4-flash-free` | Модель AI для opencode. Список: `opencode models` |
+| `GLOW_DISABLED` | пусто | Установите `1` для вывода без glow-форматирования (`askr`) |
+| `ASK_LOCALE` | авто (системный `$LANG`) | Язык интерфейса: `ru_RU` / `en_EN` |
+| `ASK_THEME` | авто (системная палитра) | Тема оформления: `dark` / `light` |
 
-Список доступных моделей: `opencode models`
+**Примеры:**
 
-Примеры:
-- `opencode/deepseek-v4-flash-free` — бесплатная (по умолчанию)
-- `opencode/deepseek-v4-flash`
-- `opencode/claude-sonnet-4-6`
-- `opencode/claude-haiku-4-5`
-- `opencode/gpt-5.4-pro`
-- `opencode/gemini-3.5-flash`
-- `opencode/qwen3.5-plus`
+```bash
+export ASK_MODEL="opencode/deepseek-v4-flash"
+export GLOW_DISABLED=1
+export ASK_LOCALE="ru_RU"    # принудительно русский
+export ASK_THEME="dark"      # принудительно тёмная тема
+```
 
-**Язык** — задаётся через `ASK_LOCALE`:
-
-- `export ASK_LOCALE="ru_RU"` — принудительно русский интерфейс (диалог, раннер, entry point)
-- `export ASK_LOCALE="en_EN"` — принудительно английский интерфейс
-
-По умолчанию язык определяется из системной переменной `$LANG`. Подробнее в разделе [Локализация](#локализация).
-
-**Тема** — задаётся через `ASK_THEME`:
-
-- `export ASK_THEME="dark"` — принудительно тёмная тема для PyQt5 диалога
-- `export ASK_THEME="light"` — принудительно светлая тема
-
-По умолчанию тема определяется автоматически из системной палитры (цветовая схема KDE). Работает как для PyQt5 диалога, так и для заголовка раннера в Konsole.
+Подробнее о языке в разделе [Локализация](#локализация). Тема определяется автоматически из цветовой схемы KDE и работает как для PyQt5 диалога, так и для заголовка раннера в Konsole.
 
 ### Функции `ask` / `askr` (терминал)
 

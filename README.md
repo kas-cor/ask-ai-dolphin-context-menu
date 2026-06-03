@@ -77,7 +77,7 @@ nano ~/.config/ask-dolphin.cfg
 
 — one query per line, lines starting with `#` are ignored. Only the last **8 presets** are shown in the dialog.
 
-### AI model & locale
+### Environment variables
 
 The installer automatically creates `~/.ask_ai` with the default model and adds `source ~/.ask_ai` to your shell config (`.bashrc` / `.zshrc`).
 
@@ -85,36 +85,27 @@ Edit `~/.ask_ai` to configure:
 
 ```bash
 nano ~/.ask_ai
-# Change ASK_MODEL to any of the available models
-# Uncomment ASK_LOCALE to force UI language
+# Change ASK_MODEL to any available model
+# Uncomment ASK_LOCALE or ASK_THEME to override auto-detection
 ```
 
-**Model** — set via `ASK_MODEL`:
+| Variable | Default | Description |
+|---|---|---|
+| `ASK_MODEL` | `opencode/deepseek-v4-flash-free` | AI model for opencode. List: `opencode models` |
+| `GLOW_DISABLED` | unset | Set to `1` for raw output without glow formatting (`askr`) |
+| `ASK_LOCALE` | auto-detect (system `$LANG`) | Force UI language: `ru_RU` / `en_EN` |
+| `ASK_THEME` | auto-detect (system palette) | Force UI theme: `dark` / `light` |
 
-List available models: `opencode models`
+**Examples:**
 
-Examples:
-- `opencode/deepseek-v4-flash-free` — free (default)
-- `opencode/deepseek-v4-flash`
-- `opencode/claude-sonnet-4-6`
-- `opencode/claude-haiku-4-5`
-- `opencode/gpt-5.4-pro`
-- `opencode/gemini-3.5-flash`
-- `opencode/qwen3.5-plus`
+```bash
+export ASK_MODEL="opencode/deepseek-v4-flash"
+export GLOW_DISABLED=1
+export ASK_LOCALE="ru_RU"    # force Russian UI
+export ASK_THEME="dark"      # force dark theme
+```
 
-**Locale** — set via `ASK_LOCALE`:
-
-- `export ASK_LOCALE="ru_RU"` — force Russian UI (dialog, runner, entry point)
-- `export ASK_LOCALE="en_EN"` — force English UI
-
-By default, the language is auto-detected from your system `$LANG`. See [Localization](#localization) for details.
-
-**Theme** — set via `ASK_THEME`:
-
-- `export ASK_THEME="dark"` — force dark theme for the PyQt5 dialog
-- `export ASK_THEME="light"` — force light theme
-
-By default, the theme is auto-detected from your system palette (KDE color scheme). Works for both the PyQt5 dialog and the Konsole runner header.
+See [Localization](#localization) for locale details. The theme auto-detects from your KDE color scheme and works for both the PyQt5 dialog and the Konsole runner header.
 
 ### `ask` / `askr` terminal functions
 
