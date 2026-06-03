@@ -42,6 +42,10 @@ runner_lbl_err_opencode="Error: opencode not found in PATH"
 runner_lbl_done="✅ Done. Press Ctrl+C or Enter to close."
 runner_fallback_query="Explain these files"
 
+# --- shell entry point (sh_) ---
+sh_lbl_selected_files="Selected files:"
+sh_lbl_current_dir="Current directory:"
+
 # --- dialog messages (dialog_) ---
 dialog_win_title="🤖  Ask AI"
 dialog_hdr_title="🤖  Ask AI"

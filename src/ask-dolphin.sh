@@ -9,6 +9,28 @@
 # --- Determine install directory (look alongside this script) ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# --- Locale detection ---
+# Priority: ASK_LOCALE env → $LANG → en_EN (same as runner + dialog)
+DETECTED_LOCALE="en_EN"
+case "${ASK_LOCALE:-}" in
+    ru_RU|ru) DETECTED_LOCALE="ru_RU" ;;
+    en_EN|en) DETECTED_LOCALE="en_EN" ;;
+    *)
+        case "${LANG:-}" in
+            ru_RU*|ru_UA*|be_BY*|uk_UA*) DETECTED_LOCALE="ru_RU" ;;
+        esac
+        ;;
+esac
+LOCALE="$DETECTED_LOCALE"
+
+# Load locale file if available
+LOCALE_FILE="$SCRIPT_DIR/locales/$LOCALE"
+[ -f "$LOCALE_FILE" ] && source "$LOCALE_FILE"
+
+# Localized strings (from locale file or inline defaults)
+LBL_SELECTED_FILES="${sh_lbl_selected_files:-Selected files:}"
+LBL_CURRENT_DIR="${sh_lbl_current_dir:-Current directory:}"
+
 # --- Preset queries (read from ~/.config/ask-dolphin.cfg) ---
 ASK_PRESETS=()
 CONFIG_FILE="$HOME/.config/ask-dolphin.cfg"
@@ -53,9 +75,9 @@ fi
 
 # --- Collect file info ---
 if [ "$HAS_SELECTION" = true ]; then
-    FILE_LIST="Selected files:\\\\n"
+    FILE_LIST="${LBL_SELECTED_FILES}\\\\n"
 else
-    FILE_LIST="Current directory:\\\\n"
+    FILE_LIST="${LBL_CURRENT_DIR}\\\\n"
 fi
 for f in "${FILES[@]}"; do
     BASENAME=$(basename "$f")

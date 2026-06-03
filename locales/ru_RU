@@ -42,6 +42,10 @@ runner_lbl_err_opencode="Ошибка: opencode не найден в PATH"
 runner_lbl_done="✅ Готово. Нажмите Ctrl+C или Enter чтобы закрыть."
 runner_fallback_query="Опиши эти файлы"
 
+# --- shell entry point (sh_) ---
+sh_lbl_selected_files="Выбранные файлы:"
+sh_lbl_current_dir="Текущая директория:"
+
 # --- dialog messages (dialog_) ---
 dialog_win_title="🤖  Спросить AI"
 dialog_hdr_title="🤖  Спросить AI"
