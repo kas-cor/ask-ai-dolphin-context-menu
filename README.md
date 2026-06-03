@@ -30,9 +30,19 @@ yay -S glow-bin  # или sudo pacman -S glow, если есть в репози
 
 ## Установка
 
+### Вариант 1: git clone (рекомендуется)
+
 ```bash
-git clone https://github.com/your-username/ask_ai_dolphin_context_menu.git
+git clone https://github.com/kas-cor/ask_ai_dolphin_context_menu.git
 cd ask_ai_dolphin_context_menu
+./install.sh
+```
+
+### Вариант 2: curl + tar (без клонирования)
+
+```bash
+curl -sL https://github.com/kas-cor/ask_ai_dolphin_context_menu/archive/main.tar.gz | tar xz
+cd ask_ai_dolphin_context_menu-*
 ./install.sh
 ```
 
