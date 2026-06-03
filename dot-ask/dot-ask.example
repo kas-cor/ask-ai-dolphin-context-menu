@@ -1,0 +1,19 @@
+# Модель AI по умолчанию для opencode.
+# Список доступных моделей: opencode models
+# Примеры:
+#   opencode/deepseek-v4-flash-free   (free, default)
+#   opencode/deepseek-v4-flash
+#   opencode/claude-sonnet-4-6
+#   opencode/claude-haiku-4-5
+#   opencode/gpt-5.4-pro
+#   opencode/gemini-3.5-flash
+#   opencode/qwen3.5-plus
+export ASK_MODEL="opencode/deepseek-v4-flash-free"
+
+ask() {
+  opencode run --model "$ASK_MODEL" "$*" | glow -
+}
+
+askr() {
+  opencode run --model "$ASK_MODEL" "$*"
+}
