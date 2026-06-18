@@ -130,6 +130,8 @@ nano ~/.ask_ai
 | Переменная | По умолчанию | Описание |
 |---|---|---|
 | `ASK_AI_MODEL` | `opencode/deepseek-v4-flash-free` | Модель AI для opencode. Список: `opencode models` |
+| `ASK_AI_EFFORT` | пусто | Уровень усилий рассуждений (передаётся как `--variant` в opencode). Значения: `high`, `max`, `minimal` |
+| `ASK_AI_MODE` | пусто | Режим работы (передаётся как `--agent` в opencode). Встроенные: `plan`, `build`. Список: `opencode agent list` |
 | `ASK_AI_SAVE_DIR` | пусто | Сохранять ответы AI в эту папку (например, `~/ask-ai-results`). Создаёт `<query-slug>-<timestamp>.md` |
 | `GLOW_DISABLED` | пусто | Установите `1` для вывода без glow-форматирования (`askr`) |
 | `ASK_AI_LOCALE` | авто (системный `$LANG`) | Язык интерфейса: `ru_RU` / `en_EN` |
@@ -139,6 +141,8 @@ nano ~/.ask_ai
 
 ```bash
 export ASK_AI_MODEL="opencode/deepseek-v4-flash"
+export ASK_AI_EFFORT="max"     # максимальный уровень усилий
+export ASK_AI_MODE="plan"      # режим планирования (через --agent plan)
 export GLOW_DISABLED=1
 export ASK_AI_LOCALE="ru_RU"    # принудительно русский
 export ASK_AI_THEME="dark"      # принудительно тёмная тема

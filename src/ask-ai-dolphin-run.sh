@@ -40,6 +40,8 @@ HDR_TITLE="${runner_hdr_title:-🤖  Ask AI about selected file(s)}"
 LBL_FILES="${runner_lbl_files:-Selected files:}"
 LBL_QUESTION="${runner_lbl_question:-Your question:}"
 LBL_MODEL="${runner_lbl_model:-Model:}"
+LBL_EFFORT="${runner_lbl_effort:-Effort:}"
+LBL_MODE="${runner_lbl_mode:-Mode:}"
 LBL_STREAMING="${runner_lbl_streaming:-⏳ Streaming AI response...}"
 LBL_GLOW_MISSING="${runner_lbl_glow_missing:-glow not found -- output without formatting}"
 LBL_ERR_OPENCODE="${runner_lbl_err_opencode:-Error: opencode not found in PATH}"
@@ -128,9 +130,19 @@ if ! command -v opencode &> /dev/null; then
     exit 1
 fi
 
-# --- Determine model (from environment or default) ---
+# --- Determine model, effort, and mode (from environment or default) ---
 MODEL="${ASK_AI_MODEL:-opencode/deepseek-v4-flash-free}"
 echo -e "${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
+
+EXTRA_FLAGS=()
+if [ -n "${ASK_AI_EFFORT:-}" ]; then
+    EXTRA_FLAGS+=(--variant "$ASK_AI_EFFORT")
+    echo -e "${BOLD}${LBL_EFFORT}${NC} ${FILE_CYAN}${ASK_AI_EFFORT}${NC}"
+fi
+if [ -n "${ASK_AI_MODE:-}" ]; then
+    EXTRA_FLAGS+=(--agent "$ASK_AI_MODE")
+    echo -e "${BOLD}${LBL_MODE}${NC} ${FILE_CYAN}${ASK_AI_MODE}${NC}"
+fi
 echo ""
 
 # --- Prepare output file (if ASK_AI_SAVE_DIR is set) ---
@@ -158,13 +170,13 @@ echo ""
 
 if [ "${GLOW_DISABLED:-0}" = "1" ]; then
     # Raw mode (askr) — tee saves raw output
-    opencode run --model "$MODEL" "$PROMPT" | tee "$TEMP_OUTPUT"
+    opencode run --model "$MODEL" "${EXTRA_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT"
 elif command -v glow &> /dev/null; then
     # Tee captures raw output BEFORE glow adds ANSI codes
-    opencode run --model "$MODEL" "$PROMPT" | tee "$TEMP_OUTPUT" | glow -
+    opencode run --model "$MODEL" "${EXTRA_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT" | glow -
 else
     echo -e "${LABEL_YELLOW}${LBL_GLOW_MISSING}${NC}"
-    opencode run --model "$MODEL" "$PROMPT" | tee "$TEMP_OUTPUT"
+    opencode run --model "$MODEL" "${EXTRA_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT"
 fi
 
 # --- Save output to file if requested ---

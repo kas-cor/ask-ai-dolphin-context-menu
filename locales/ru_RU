@@ -30,12 +30,16 @@ install_restart_terminal="Или из терминала: killall dolphin && dol
 install_optional="📝 Дополнительно:"
 install_edit_presets="  - Изменить пресеты:  nano %s"
 install_set_model="  - Сменить модель:    nano ~/.ask_ai  (изменить ASK_AI_MODEL)"
+install_set_effort="  - Уровень усилий:   nano ~/.ask_ai  (изменить ASK_AI_EFFORT)"
+install_set_mode="  - Режим работы:     nano ~/.ask_ai  (изменить ASK_AI_MODE)"
 
 # --- runner messages (runner_) ---
 runner_hdr_title="🤖  Спросить AI о выбранных файлах"
 runner_lbl_files="Выбранные файлы:"
 runner_lbl_question="Ваш вопрос:"
 runner_lbl_model="Модель:"
+runner_lbl_effort="Усилия:"
+runner_lbl_mode="Режим:"
 runner_lbl_streaming="⏳ Получение ответа AI..."
 runner_lbl_glow_missing="glow не найден — вывод без форматирования"
 runner_lbl_err_opencode="Ошибка: opencode не найден в PATH"

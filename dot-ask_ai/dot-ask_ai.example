@@ -10,6 +10,18 @@
 #   opencode/qwen3.5-plus
 export ASK_AI_MODEL="opencode/deepseek-v4-flash-free"
 
+# Reasoning effort for the AI model (passed as --variant to opencode).
+# Supported values depend on the model (e.g., high, max, minimal).
+# Uncomment to override the default:
+# export ASK_AI_EFFORT="high"
+# export ASK_AI_EFFORT="max"
+# export ASK_AI_EFFORT="minimal"
+
+# Operation mode for opencode (passed as --agent). Supports plan or build out of the box.
+# See also: opencode agent list
+# export ASK_AI_MODE="plan"
+# export ASK_AI_MODE="build"
+
 # UI language for the PyQt5 dialog and Konsole runner.
 # Uncomment to force Russian (auto-detected from $LANG by default):
 # export ASK_AI_LOCALE="ru_RU"

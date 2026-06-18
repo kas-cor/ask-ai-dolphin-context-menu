@@ -30,12 +30,16 @@ install_restart_terminal="Or from terminal: killall dolphin && dolphin --new-win
 install_optional="📝 Optional:"
 install_edit_presets="  - Edit presets:  nano %s"
 install_set_model="  - Set model:     nano ~/.ask_ai  (change ASK_AI_MODEL)"
+install_set_effort="  - Set effort:    nano ~/.ask_ai  (change ASK_AI_EFFORT)"
+install_set_mode="  - Set mode:      nano ~/.ask_ai  (change ASK_AI_MODE)"
 
 # --- runner messages (runner_) ---
 runner_hdr_title="🤖  Ask AI about selected file(s)"
 runner_lbl_files="Selected files:"
 runner_lbl_question="Your question:"
 runner_lbl_model="Model:"
+runner_lbl_effort="Effort:"
+runner_lbl_mode="Mode:"
 runner_lbl_streaming="⏳ Streaming AI response..."
 runner_lbl_glow_missing="glow not found — output without formatting"
 runner_lbl_err_opencode="Error: opencode not found in PATH"

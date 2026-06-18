@@ -130,6 +130,8 @@ nano ~/.ask_ai
 | Variable | Default | Description |
 |---|---|---|
 | `ASK_AI_MODEL` | `opencode/deepseek-v4-flash-free` | AI model for opencode. List: `opencode models` |
+| `ASK_AI_EFFORT` | unset | Reasoning effort (passed as `--variant` to opencode). Values: `high`, `max`, `minimal` |
+| `ASK_AI_MODE` | unset | Operation mode (passed as `--agent` to opencode). Built-in: `plan`, `build`. List: `opencode agent list` |
 | `ASK_AI_SAVE_DIR` | unset | Save AI responses to this directory (e.g., `~/ask-ai-results`). Creates `<query-slug>-<timestamp>.md` files |
 | `GLOW_DISABLED` | unset | Set to `1` for raw output without glow formatting (`askr`) |
 | `ASK_AI_LOCALE` | auto-detect (system `$LANG`) | Force UI language: `ru_RU` / `en_EN` |
@@ -139,6 +141,8 @@ nano ~/.ask_ai
 
 ```bash
 export ASK_AI_MODEL="opencode/deepseek-v4-flash"
+export ASK_AI_EFFORT="max"     # maximum reasoning effort
+export ASK_AI_MODE="plan"      # plan mode (uses --agent plan)
 export GLOW_DISABLED=1
 export ASK_AI_LOCALE="ru_RU"    # force Russian UI
 export ASK_AI_THEME="dark"      # force dark theme

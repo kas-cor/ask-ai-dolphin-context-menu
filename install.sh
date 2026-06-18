@@ -73,6 +73,8 @@ msg() {
                     optional)          str="📝 Дополнительно:" ;;
                     edit_presets)      str="  - Изменить пресеты:  nano %s" ;;
                     set_model)         str="  - Сменить модель:    nano ~/.ask_ai  (изменить ASK_AI_MODEL)" ;;
+                    set_effort)        str="  - Уровень усилий:   nano ~/.ask_ai  (изменить ASK_AI_EFFORT)" ;;
+                    set_mode)          str="  - Режим работы:     nano ~/.ask_ai  (изменить ASK_AI_MODE)" ;;
                     *)                 str="[msg_%s]" ;;
                 esac
                 ;;
@@ -102,6 +104,8 @@ msg() {
                     optional)          str="📝 Optional:" ;;
                     edit_presets)      str="  - Edit presets:  nano %s" ;;
                     set_model)         str="  - Set model:     nano ~/.ask_ai  (change ASK_AI_MODEL)" ;;
+                    set_effort)        str="  - Set effort:   nano ~/.ask_ai  (change ASK_AI_EFFORT)" ;;
+                    set_mode)          str="  - Set mode:     nano ~/.ask_ai  (change ASK_AI_MODE)" ;;
                     *)                 str="[msg_%s]" ;;
                 esac
                 ;;
@@ -269,3 +273,5 @@ echo ""
 e optional
 e edit_presets "$CONFIG_DIR/ask-ai-dolphin.cfg"
 e set_model
+e set_effort
+e set_mode
