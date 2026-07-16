@@ -22,14 +22,14 @@ export ASK_AI_MODEL="opencode/deepseek-v4-flash-free"
 # export ASK_AI_MODE="plan"
 # export ASK_AI_MODE="build"
 
-# UI language for the PyQt5 dialog and Konsole runner.
+# UI language for the PyQt dialog and Konsole runner.
 # Uncomment to force Russian (auto-detected from $LANG by default):
 # export ASK_AI_LOCALE="ru_RU"
 # Or to force English:
 # export ASK_AI_LOCALE="en_EN"
 
-# UI theme for the PyQt5 dialog (dark/light).
-# By default, auto-detected from your system theme.
+# UI theme for the PyQt dialog and runner header (dark/light).
+# By default, auto-detected from your system theme / COLORFGBG.
 # Uncomment to override:
 # export ASK_AI_THEME="dark"
 # export ASK_AI_THEME="light"
@@ -39,16 +39,34 @@ export ASK_AI_MODEL="opencode/deepseek-v4-flash-free"
 # Uncomment to enable:
 # export ASK_AI_SAVE_DIR="$HOME/ask-ai-results"
 
+# Script auto-execution when the AI response is a shebang script.
+#   unset / prompt  — ask "Run this script? [y/N]" (default, safe)
+#   1 / always      — run without prompting
+#   0 / never       — never run; only save the .sh file
+# export ASK_AI_AUTO_EXEC="prompt"
+# export ASK_AI_AUTO_EXEC="1"
+# export ASK_AI_AUTO_EXEC="0"
+
+# Copy AI response to the clipboard after streaming (wl-copy / xclip / xsel).
+# export ASK_AI_CLIPBOARD=1
+
+# Limits for attaching selected files via opencode -f (text only).
+# export ASK_AI_MAX_ATTACH_BYTES=204800   # 200 KiB per file
+# export ASK_AI_MAX_ATTACH_FILES=20
+
 # Disable glow Markdown formatting (used by askr below).
 # Uncomment for permanently raw output:
 # export GLOW_DISABLED=1
+
+# Optional preferred terminal if konsole is not installed:
+# export TERMINAL="kgx"
 
 # ask / askr use ask-ai-dolphin-run.sh (from the Ask AI Dolphin Context Menu project).
 # This script adds the current directory (PWD) as file context for the AI.
 # Requires prior installation: ./install.sh (see README.md)
 #
 # Enable by adding to your shell config:
-#   echo 'source ~/.ask_ai' >> ~/.bashrc
+#   echo 'source ~/.ask_ai' >> ~/.bashrc   # or ~/.zshrc
 ask() {
   ~/.local/bin/ask-ai-dolphin-run.sh "$*"
 }

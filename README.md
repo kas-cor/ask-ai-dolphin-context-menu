@@ -23,7 +23,9 @@ Select files/folders → right-click → **Ask AI** → choose a preset or type 
 - **Model selection** — via the `ASK_AI_MODEL` environment variable (defaults to free `opencode/deepseek-v4-flash-free`)
 - **Streaming response** — output is piped through `glow` for real-time Markdown highlighting
 - **No selection fallback** — if nothing is selected, the current directory is used as context
-- **PyQt5 dialog** — polished UI styled for KDE Breeze
+- **PyQt dialog** — multi-line input, presets, recent history; Breeze-styled (PyQt5 / PyQt6)
+- **File attachments** — text files attached to opencode via `-f` (size/count limits)
+- **Safe script handling** — shebang responses saved as `.sh`; run only after confirm (or `ASK_AI_AUTO_EXEC`)
 
 ## Use Cases
 
@@ -45,11 +47,11 @@ Select files/folders → right-click → **Ask AI** → choose a preset or type 
 | **Explain** | `Explain this like I'm five` | Breaks down complex documents / configs |
 | **Translate** | `Translate this to English` | Translates text files in-place |
 | **Data to tables** | `Create a Markdown table from this data` | Converts raw CSV / lists into formatted tables |
-| **Image batch processing** | `Write a script to resize images to 1920x1080` | AI writes a bash script → **runner executes it automatically** |
-| **Collage / slideshow** | `Write a script to make a collage from these images` | AI generates ImageMagick / ffmpeg script and runs it |
-| **Crop to aspect ratio** | `Write a script to crop photos to 1:1` | Script runs immediately, results appear in the same folder |
+| **Image batch processing** | `Write a script to resize images to 1920x1080` | AI writes a bash script → saved as `.sh` → you confirm run |
+| **Collage / slideshow** | `Write a script to make a collage from these images` | AI generates ImageMagick / ffmpeg script; confirm to run |
+| **Crop to aspect ratio** | `Write a script to crop photos to 1:1` | Script saved next to selection; optional auto-run |
 
-> **Script auto-execution:** if the AI response starts with `#!/bin/bash` (e.g., a script), the runner automatically saves it as `.sh`, makes it executable, and runs it. Informational responses (summaries, explanations) are displayed as-is.
+> **Script handling:** if the AI response starts with a shebang (`#!/bin/bash`, …) or a fenced code block containing one, the runner saves it as an executable `.sh` and asks **Run this script? [y/N]**. Set `ASK_AI_AUTO_EXEC=1` to always run, or `ASK_AI_AUTO_EXEC=0` to never run. Informational answers are shown as-is.
 
 These are just examples — the only limit is your imagination. Any question you can ask an AI, any script it can write, any file you can point it at — it's all one right-click away.
 
@@ -133,9 +135,14 @@ nano ~/.ask_ai
 | `ASK_AI_EFFORT` | unset | Reasoning effort (passed as `--variant` to opencode). Values: `high`, `max`, `minimal` |
 | `ASK_AI_MODE` | unset | Operation mode (passed as `--agent` to opencode). Built-in: `plan`, `build`. List: `opencode agent list` |
 | `ASK_AI_SAVE_DIR` | unset | Save AI responses to this directory (e.g., `~/ask-ai-results`). Creates `<query-slug>-<timestamp>.md` files |
+| `ASK_AI_AUTO_EXEC` | `prompt` | Shebang script policy: `prompt` (ask y/N), `1`/`always`, `0`/`never` |
+| `ASK_AI_CLIPBOARD` | unset | Set `1` to copy the response to the clipboard |
+| `ASK_AI_MAX_ATTACH_BYTES` | `204800` | Max bytes per file attached with `opencode -f` |
+| `ASK_AI_MAX_ATTACH_FILES` | `20` | Max number of attached text files |
 | `GLOW_DISABLED` | unset | Set to `1` for raw output without glow formatting (`askr`) |
 | `ASK_AI_LOCALE` | auto-detect (system `$LANG`) | Force UI language: `ru_RU` / `en_EN` |
 | `ASK_AI_THEME` | auto-detect (system palette) | Force UI theme: `dark` / `light` |
+| `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
 
 **Examples:**
 
@@ -143,12 +150,14 @@ nano ~/.ask_ai
 export ASK_AI_MODEL="opencode/deepseek-v4-flash"
 export ASK_AI_EFFORT="max"     # maximum reasoning effort
 export ASK_AI_MODE="plan"      # plan mode (uses --agent plan)
+export ASK_AI_AUTO_EXEC="0"    # never auto-run generated scripts
+export ASK_AI_CLIPBOARD=1      # copy answer to clipboard
 export GLOW_DISABLED=1
 export ASK_AI_LOCALE="ru_RU"    # force Russian UI
 export ASK_AI_THEME="dark"      # force dark theme
 ```
 
-See [Localization](#localization) for locale details. The theme auto-detects from your KDE color scheme and works for both the PyQt5 dialog and the Konsole runner header.
+See [Localization](#localization) for locale details. The theme auto-detects from your KDE color scheme and works for both the dialog and the runner header.
 
 ### `ask` / `askr` terminal functions
 
@@ -221,12 +230,11 @@ cp locales/en_EN locales/de_DE
 # Edit locales/de_DE — translate everything after the =
 ```
 
-2. **Install locale detection** — add your locale to the case statements in all 4 scripts. Look for the existing `ru_RU*|ru_UA*|be_BY*|uk_UA*` pattern and the `ASK_AI_LOCALE` handling:
+2. **Install locale detection** — extend shared detection:
 
-   - `install.sh` — add to both: `ru_RU*|ru_UA*|be_BY*|uk_UA*) DETECTED_LOCALE="ru_RU" ;;` and the `ASK_AI_LOCALE` case block
-   - `src/ask-ai-dolphin.sh` — same two locations
-   - `src/ask-ai-dolphin-run.sh` — same two locations
-   - `src/ask-ai-dolphin-dialog.py` — in `detect_locale()` function (both `ASK_AI_LOCALE` and `LANG` checks)
+   - `src/ask-ai-common.sh` — `ask_ai_detect_locale()` (used by shell scripts + install)
+   - `src/ask-ai-dolphin-dialog.py` — `detect_locale()`
+   - `install.sh` — CLI arg bootstrap case (for curl-pipe before common.sh is available)
 
 3. **Create a preset config** (optional) — create `config/ask-ai-dolphin.cfg.xx_XX.example` with translated preset queries
 
@@ -257,22 +265,24 @@ cp locales/en_EN locales/de_DE
 ```
 ask-ai-dolphin-context-menu/
 ├── src/
-│   ├── ask-ai-dolphin.sh          # Entry point — PyQt5 dialog + Konsole
-│   ├── ask-ai-dolphin-run.sh      # Runner: stream opencode through glow
-│   └── ask-ai-dolphin-dialog.py   # PyQt5 dialog with presets and input field
+│   ├── ask-ai-common.sh           # Shared shell helpers (locale, file checks)
+│   ├── ask-ai-dolphin.sh          # Entry point — dialog + terminal
+│   ├── ask-ai-dolphin-run.sh      # Runner: opencode -f, glow, script confirm
+│   └── ask-ai-dolphin-dialog.py   # Dialog: presets, history, multi-line input
 ├── servicemenu/
 │   └── ask-ai-dolphin.desktop     # Dolphin service menu file
 ├── config/
 │   └── ask-ai-dolphin.cfg.example # Example presets config
 ├── dot-ask_ai/
-│   └── dot-ask_ai.example      # Example ~/.ask_ai file
-├── install.sh                  # Install script (works via curl too)
-├── uninstall.sh                # Uninstall script (works via curl too)
-├── AGENTS.md                   # AI agents description
-├── CHANGELOG.md                # Release history
-├── CONTRIBUTING.md             # Contribution guide
-├── README.md                   # This file (English)
-└── README_ru.md                # Russian documentation
+│   └── dot-ask_ai.example         # Example ~/.ask_ai file
+├── locales/                       # en_EN, ru_RU
+├── install.sh                     # Install script (works via curl too)
+├── uninstall.sh                   # Uninstall script (works via curl too)
+├── AGENTS.md
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── README.md
+└── README_ru.md
 ```
 
 ## Contributing

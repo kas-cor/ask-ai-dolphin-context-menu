@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- **Script auto-execution is no longer automatic by default** — shebang responses are saved as `.sh`, then you are prompted `Run this script? [y/N]`. Use `ASK_AI_AUTO_EXEC=1` to always run, or `0`/`never` to never run.
+
+### Features
+
+- **File attachments** — selected text files are passed to `opencode run -f` (limits: `ASK_AI_MAX_ATTACH_BYTES`, `ASK_AI_MAX_ATTACH_FILES`); directories get a short listing in the prompt
+- **Multi-line query input** and **recent query history** (`~/.config/ask-ai-dolphin.history`)
+- **Model / effort / mode** shown in the dialog header
+- **Terminal fallback** — `$TERMINAL` → konsole → kgx / gnome-terminal / xterm → current TTY
+- **Optional clipboard copy** via `ASK_AI_CLIPBOARD=1` (wl-copy / xclip / xsel)
+- **PyQt6 fallback** if PyQt5 is not installed
+- **Shared `ask-ai-common.sh`** for locale detection and helpers
+- **Locale-aware built-in presets** when config is missing (EN/RU)
+- **Installer** prefers `$SHELL` rc file; notes for fish; hints when `~/.ask_ai` already exists
+- **Uninstaller** removes `ask-ai-common.sh` and installed locale files
+
+### Fixes
+
+- Report `opencode` failures (`pipefail` + status message)
+- Dynamic-width runner header for long localized titles
+- Avoid `echo -e` on file paths; safer `printf` in installer
+- Rename install path vs script-output dir (`INSTALL_DIR` / `SCRIPT_OUT_DIR`)
+
 ## [1.1.0] — 2026-06-08
 
 ### 🚀 New Features

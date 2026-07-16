@@ -14,6 +14,7 @@ jobs:
 
       - name: Shell syntax check
         run: |
+          bash -n src/ask-ai-common.sh
           bash -n src/ask-ai-dolphin.sh
           bash -n src/ask-ai-dolphin-run.sh
           bash -n install.sh
@@ -42,6 +43,11 @@ jobs:
         run: |
           python3 .github/scripts/test-ask-theme.py
           echo "ASK_AI_THEME OK"
+
+      - name: Common helpers unit test
+        run: |
+          bash .github/scripts/test-common-helpers.sh
+          echo "Common helpers OK"
 
       - name: Runner save & script execution test
         run: |
