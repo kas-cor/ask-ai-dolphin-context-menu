@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/kas-cor/ask-ai-dolphin-context-menu/compare/v1.1.0...v1.2.0) (2026-07-16)
+
+
+### Features
+
+* add ASK_AI_EFFORT and ASK_AI_MODE env vars ([33c443a](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/33c443a29edaedc1efcdd194b075d8c950a5c5f4))
+* add ASK_AI_SAVE_DIR and auto-executable scripts ([a09fa0e](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/a09fa0eb8a6a2b780c706fe83cf077c2cc93bf8f))
+* add file attachments, query history, terminal fallback, and safe script handling ([b2d32a2](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/b2d32a2b5a3665a27d21da49301692e3ab62c96a))
+* initial release v1.0.0 ([14b09b5](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/14b09b5e6c08db17087477096061037fc5e622fa))
+
 ## [Unreleased]
 
 ### Security
