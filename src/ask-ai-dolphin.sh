@@ -7,6 +7,9 @@
 # Preset queries: configured in ~/.config/ask-ai-dolphin.cfg
 
 # --- Install directory ---
+# Strict mode: fail fast on unset vars and errors.
+set -eu
+
 INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- Shared helpers ---
