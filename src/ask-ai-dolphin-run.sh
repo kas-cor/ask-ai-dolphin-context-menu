@@ -6,6 +6,9 @@
 # Clean exit on Ctrl+C (avoids Konsole's "Program error" message)
 trap 'echo ""; exit 0' INT
 
+# Strict mode: fail fast on unset vars and errors; pipefail enabled locally around
+# the opencode pipeline (see below) to preserve its exit status.
+set -eu
 QUERY="${1:-}"
 if [ "$#" -gt 0 ]; then
     shift
@@ -116,7 +119,7 @@ for f in "${FILES[@]}"; do
     if [ -d "$f" ]; then
         echo -e "  ${FILE_CYAN}📁 $f${NC}"
     else
-        SIZE=$(du -h "$f" 2>/dev/null | cut -f1)
+        SIZE=$(du -h "$f" 2>/dev/null | cut -f1 || true)
         echo -e "  ${FILE_GREEN}📄 $f${NC}  ${BOLD}(${SIZE})${NC}"
     fi
 done
@@ -229,7 +232,7 @@ import sys, re
 s = sys.stdin.read().strip().lower()
 s = re.sub(r'[^a-zа-я0-9 ]', '', s).strip().replace(' ', '_')[:40]
 print(s or 'result')
-" 2>/dev/null) || QUERY_SLUG=$(printf '%s' "$QUERY" | tr ' ' '_' | head -c 40)
+" 2>/dev/null) || QUERY_SLUG=$(printf '%s' "$QUERY" | tr -cd 'a-zA-Zа-яА-Я0-9 _-' | tr ' ' '_' | head -c 40)
     [ -z "$QUERY_SLUG" ] && QUERY_SLUG="result"
     SAVE_FILE="$ASK_AI_SAVE_DIR/${QUERY_SLUG}-${TIMESTAMP}.md"
 fi
