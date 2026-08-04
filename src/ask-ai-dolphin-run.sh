@@ -117,15 +117,16 @@ echo ""
 echo -e "${BOLD}${LABEL_YELLOW}${LBL_FILES}${NC}"
 for f in "${FILES[@]}"; do
     if [ -d "$f" ]; then
-        echo -e "  ${FILE_CYAN}📁 $f${NC}"
+        # printf '%s' keeps escape sequences in paths verbatim (no ANSI injection)
+        printf '  %b📁 %s%b\n' "$FILE_CYAN" "$f" "$NC"
     else
         SIZE=$(du -h "$f" 2>/dev/null | cut -f1 || true)
-        echo -e "  ${FILE_GREEN}📄 $f${NC}  ${BOLD}(${SIZE})${NC}"
+        printf '  %b📄 %s%b  %b(%s)%b\n' "$FILE_GREEN" "$f" "$NC" "$BOLD" "$SIZE" "$NC"
     fi
 done
 echo ""
 echo -e "${BOLD}${LBL_QUESTION}${NC}"
-echo -e "  ${LABEL_YELLOW}$QUERY${NC}"
+printf '  %b%s%b\n' "$LABEL_YELLOW" "$QUERY" "$NC"
 echo ""
 
 # --- Build file attachments (-f) and prompt context ---
@@ -206,13 +207,13 @@ fi
 if [ ${#ATTACHED_NAMES[@]} -gt 0 ]; then
     echo -e "${BOLD}${LBL_ATTACHED}${NC} ${FILE_CYAN}${#ATTACHED_NAMES[@]}${NC}"
     for a in "${ATTACHED_NAMES[@]}"; do
-        echo -e "  ${FILE_GREEN}+ $a${NC}"
+        printf '  %b+ %s%b\n' "$FILE_GREEN" "$a" "$NC"
     done
 fi
 if [ ${#SKIPPED_NAMES[@]} -gt 0 ]; then
     echo -e "${BOLD}${LBL_SKIPPED_ATTACH}${NC}"
     for s in "${SKIPPED_NAMES[@]}"; do
-        echo -e "  ${LABEL_YELLOW}- $s${NC}"
+        printf '  %b- %s%b\n' "$LABEL_YELLOW" "$s" "$NC"
     done
 fi
 echo ""
