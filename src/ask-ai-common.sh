@@ -78,6 +78,60 @@ ask_ai_file_size() {
     fi
 }
 
+# Resolve reasoning effort for opencode v2.
+# v2 removed the `--variant` flag — effort is now a model variant passed inside
+# the model id: --model "provider/model#variant". Variants are model-specific
+# (e.g. deepseek-v4-flash: low/high/max; mimo-v2.6-flash-free: none), so the
+# model catalog is queried before applying.
+# Prints "<model>#<effort>" on success, nothing otherwise.
+# Return codes:
+#   0 — variant supported, output is the model with the variant appended
+#   1 — model does not declare this variant
+#   2 — could not verify (opencode/python3 missing, catalog unavailable)
+#   3 — model id already pins a variant (…#…)
+# Usage: ask_ai_apply_effort "opencode/deepseek-v4-flash" "high"
+ask_ai_apply_effort() {
+    local model="${1:-}" effort="${2:-}"
+    [ -n "$model" ] && [ -n "$effort" ] || return 2
+    case "$model" in *\#*) return 3 ;; esac
+    command -v opencode &>/dev/null || return 2
+    command -v python3 &>/dev/null || return 2
+
+    local payload_file
+    # opencode v2 truncates stdout to 256 KiB when it is a pipe/command
+    # substitution; a redirect to a regular file yields the full catalog.
+    payload_file=$(mktemp) || return 2
+    if ! opencode api GET /api/model > "$payload_file" 2>/dev/null; then
+        rm -f "$payload_file"
+        return 2
+    fi
+    [ -s "$payload_file" ] || { rm -f "$payload_file"; return 2; }
+
+    # Exit codes from python: 0 = variant found, 1 = not declared, 2 = bad catalog
+    local py_rc=0
+    python3 - "$payload_file" "$model" "$effort" <<'PY' || py_rc=$?
+import json, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as fh:
+        data = json.load(fh).get("data") or []
+except Exception:
+    sys.exit(2)
+model, effort = sys.argv[2], sys.argv[3]
+provider, _, mid = model.partition("/")
+for m in data:
+    if m.get("providerID") == provider and m.get("modelID") == mid:
+        for v in (m.get("variants") or []):
+            if v.get("id") == effort:
+                sys.exit(0)
+        sys.exit(1)
+sys.exit(1)
+PY
+    rm -f "$payload_file"
+    [ "$py_rc" -eq 0 ] || return "$py_rc"
+
+    printf '%s#%s\n' "$model" "$effort"
+}
+
 # Build a short directory listing for the prompt (non-recursive, max 50 entries).
 ask_ai_dir_listing() {
     local d="$1"

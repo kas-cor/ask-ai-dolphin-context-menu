@@ -43,7 +43,7 @@ msg() {
                     checking_deps)     str="🔍 Проверка зависимостей..." ;;
                     missing_deps)      str="❌ Отсутствуют необходимые зависимости:" ;;
                     install_them)      str="  Установите их:" ;;
-                    opencode_url)      str="    # opencode: см. https://opencode.ai" ;;
+                    opencode_url)      str="    opencode v2: curl -fsSL https://opencode.ai/v2/install | bash" ;;
                     glow_warning)      str="  ⚠️  glow не найден — форматирование Markdown недоступно" ;;
                     glow_install)      str="       Установите: sudo pacman -S glow" ;;
                     installing)        str="📦 Установка Ask AI Dolphin context menu..." ;;
@@ -77,7 +77,7 @@ msg() {
                     checking_deps)     str="🔍 Checking dependencies..." ;;
                     missing_deps)      str="❌ Missing required dependencies:" ;;
                     install_them)      str="  Install them with:" ;;
-                    opencode_url)      str="    # opencode: see https://opencode.ai" ;;
+                    opencode_url)      str="    opencode v2: curl -fsSL https://opencode.ai/v2/install | bash" ;;
                     glow_warning)      str="  ⚠️  glow not found — Markdown formatting will not be available" ;;
                     glow_install)      str="       Install: sudo pacman -S glow" ;;
                     installing)        str="📦 Installing Ask AI Dolphin context menu..." ;;

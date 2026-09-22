@@ -413,7 +413,7 @@ class AskDialog(QDialog):
         title.setSizePolicy(_size_policy("Expanding", "Preferred"))
         hdr_layout.addWidget(title)
 
-        model = os.environ.get("ASK_AI_MODEL", "opencode/deepseek-v4-flash-free")
+        model = os.environ.get("ASK_AI_MODEL", "opencode/mimo-v2.6-flash-free")
         meta_parts = [f"{model_label} {model}"]
         if os.environ.get("ASK_AI_EFFORT"):
             meta_parts.append(f"effort={os.environ['ASK_AI_EFFORT']}")
