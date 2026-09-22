@@ -49,6 +49,9 @@ LBL_FILES="${runner_lbl_files:-Selected files:}"
 LBL_QUESTION="${runner_lbl_question:-Your question:}"
 LBL_MODEL="${runner_lbl_model:-Model:}"
 LBL_EFFORT="${runner_lbl_effort:-Effort:}"
+LBL_EFFORT_SKIPPED="${runner_lbl_effort_skipped:-Effort '%s' skipped: model %s has no such variant}"
+LBL_EFFORT_UNKNOWN="${runner_lbl_effort_unknown:-Effort '%s' skipped: could not verify variant support}"
+LBL_EFFORT_PINNED="${runner_lbl_effort_pinned:-Effort '%s' skipped: %s already specifies a variant}"
 LBL_MODE="${runner_lbl_mode:-Mode:}"
 LBL_STREAMING="${runner_lbl_streaming:-Streaming AI response...}"
 LBL_GLOW_MISSING="${runner_lbl_glow_missing:-glow not found -- output without formatting}"
@@ -80,13 +83,17 @@ if [ ${#FILES[@]} -eq 0 ]; then
 fi
 
 # --- Theme detection ---
+# ASK_AI_THEME / COLORFGBG are optional: expand with a default, otherwise
+# `set -u` aborts the runner before any output (pre-existing crash).
 DETECTED_THEME="light"
-ask_theme_lower="${ASK_AI_THEME,,}"
-case "${ask_theme_lower:-}" in
+ask_theme_lower="${ASK_AI_THEME:-}"
+ask_theme_lower="${ask_theme_lower,,}"
+case "$ask_theme_lower" in
     dark|d) DETECTED_THEME="dark" ;;
     light|l) DETECTED_THEME="light" ;;
     *)
-        colorfgbg_bg="${COLORFGBG#*;}"
+        colorfgbg_bg="${COLORFGBG:-}"
+        colorfgbg_bg="${colorfgbg_bg#*;}"
         case "$colorfgbg_bg" in
             0|4|8) DETECTED_THEME="dark" ;;
         esac
@@ -192,18 +199,48 @@ if ! command -v opencode &>/dev/null; then
     exit 1
 fi
 
-MODEL="${ASK_AI_MODEL:-opencode/deepseek-v4-flash-free}"
-echo -e "${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
+MODEL="${ASK_AI_MODEL:-opencode/mimo-v2.6-flash-free}"
 
+# opencode v2: effort is a model variant (provider/model#variant), not --variant.
+# Only applied when the model actually declares it, so the query never fails.
 EXTRA_FLAGS=()
 if [ -n "${ASK_AI_EFFORT:-}" ]; then
-    EXTRA_FLAGS+=(--variant "$ASK_AI_EFFORT")
-    echo -e "${BOLD}${LBL_EFFORT}${NC} ${FILE_CYAN}${ASK_AI_EFFORT}${NC}"
+    EFFORT_RC=0
+    _effort_model=""
+    if declare -F ask_ai_apply_effort &>/dev/null; then
+        _effort_model=$(ask_ai_apply_effort "$MODEL" "$ASK_AI_EFFORT") || EFFORT_RC=$?
+    else
+        EFFORT_RC=2
+    fi
+    case "$EFFORT_RC" in
+        0)
+            MODEL="$_effort_model"
+            EFFORT_LINE=$'\n'"${BOLD}${LBL_EFFORT}${NC} ${FILE_CYAN}${ASK_AI_EFFORT}${NC}"
+            ;;
+        1)
+            # shellcheck disable=SC2059
+            EFFORT_LINE=$'\n'"$(printf "${LABEL_YELLOW}${LBL_EFFORT_SKIPPED}${NC}" "$ASK_AI_EFFORT" "$MODEL")"
+            ;;
+        3)
+            # shellcheck disable=SC2059
+            EFFORT_LINE=$'\n'"$(printf "${LABEL_YELLOW}${LBL_EFFORT_PINNED}${NC}" "$ASK_AI_EFFORT" "$MODEL")"
+            ;;
+        *)
+            # shellcheck disable=SC2059
+            EFFORT_LINE=$'\n'"$(printf "${LABEL_YELLOW}${LBL_EFFORT_UNKNOWN}${NC}" "$ASK_AI_EFFORT")"
+            ;;
+    esac
+fi
+
+echo -e "${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
+if [ -n "${EFFORT_LINE:-}" ]; then
+    echo -e "$EFFORT_LINE"
 fi
 if [ -n "${ASK_AI_MODE:-}" ]; then
     EXTRA_FLAGS+=(--agent "$ASK_AI_MODE")
     echo -e "${BOLD}${LBL_MODE}${NC} ${FILE_CYAN}${ASK_AI_MODE}${NC}"
 fi
+
 if [ ${#ATTACHED_NAMES[@]} -gt 0 ]; then
     echo -e "${BOLD}${LBL_ATTACHED}${NC} ${FILE_CYAN}${#ATTACHED_NAMES[@]}${NC}"
     for a in "${ATTACHED_NAMES[@]}"; do

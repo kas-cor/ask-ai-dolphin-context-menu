@@ -20,7 +20,7 @@ Select files/folders → right-click → **Ask AI** → choose a preset or type 
 
 - **Query presets** — configurable list of quick queries
 - **Custom query** — free-text input field for your own question
-- **Model selection** — via the `ASK_AI_MODEL` environment variable (defaults to free `opencode/deepseek-v4-flash-free`)
+- **Model selection** — via the `ASK_AI_MODEL` environment variable (defaults to free `opencode/mimo-v2.6-flash-free`)
 - **Streaming response** — output is piped through `glow` for real-time Markdown highlighting
 - **No selection fallback** — if nothing is selected, the current directory is used as context
 - **PyQt dialog** — multi-line input, presets, recent history; Breeze-styled (PyQt5 / PyQt6)
@@ -76,7 +76,9 @@ askr "Raw output without glow"
 ```bash
 sudo pacman -S python-pyqt5 konsole
 yay -S glow-bin  # or sudo pacman -S glow if available
-# opencode — install from https://opencode.ai
+# opencode v2 — install:
+curl -fsSL https://opencode.ai/v2/install | bash
+# alternatives: sudo pacman -S opencode | npm i -g @opencode/cli | brew install anomalyco/tap/opencode-v2 | yay -S opencode-beta
 ```
 
 ## Installation
@@ -131,9 +133,9 @@ nano ~/.ask_ai
 
 | Variable | Default | Description |
 |---|---|---|
-| `ASK_AI_MODEL` | `opencode/deepseek-v4-flash-free` | AI model for opencode. List: `opencode models` |
-| `ASK_AI_EFFORT` | unset | Reasoning effort (passed as `--variant` to opencode). Values: `high`, `max`, `minimal` |
-| `ASK_AI_MODE` | unset | Operation mode (passed as `--agent` to opencode). Built-in: `plan`, `build`. List: `opencode agent list` |
+| `ASK_AI_MODEL` | `opencode/mimo-v2.6-flash-free` | AI model for opencode. List: `opencode models` |
+| `ASK_AI_EFFORT` | unset | Reasoning effort. opencode v2: applied as a model variant `provider/model#variant` (`--variant` was removed in v2). Values depend on the model (`high`, `max`, `minimal`, …); skipped with a warning if the model has no such variant |
+| `ASK_AI_MODE` | unset | Operation mode (passed as `--agent` to opencode). Built-in: `plan`, `build`. List: `opencode models` |
 | `ASK_AI_SAVE_DIR` | unset | Save AI responses to this directory (e.g., `~/ask-ai-results`). Creates `<query-slug>-<timestamp>.md` files |
 | `ASK_AI_AUTO_EXEC` | `prompt` | Shebang script policy: `prompt` (ask y/N), `1`/`always`, `0`/`never` |
 | `ASK_AI_CLIPBOARD` | unset | Set `1` to copy the response to the clipboard |

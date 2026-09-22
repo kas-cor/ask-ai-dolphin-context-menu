@@ -49,8 +49,8 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 
 | Variable | Default | Description |
 |---|---|---|
-| `ASK_AI_MODEL` | `opencode/deepseek-v4-flash-free` | AI model for opencode. List: `opencode models` |
-| `ASK_AI_EFFORT` | unset | Reasoning effort (`--variant`). Values: `high`, `max`, `minimal` |
+| `ASK_AI_MODEL` | `opencode/mimo-v2.6-flash-free` | AI model for opencode. List: `opencode models` |
+| `ASK_AI_EFFORT` | unset | Reasoning effort. opencode v2: applied as model variant `provider/model#variant` (`--variant` removed in v2). Values are model-specific; skipped with a warning if unsupported |
 | `ASK_AI_MODE` | unset | Agent mode (`--agent`). Built-in: `plan`, `build` |
 | `ASK_AI_SAVE_DIR` | unset | Save responses as `<query-slug>-<timestamp>.md` |
 | `ASK_AI_AUTO_EXEC` | `prompt` | Script run policy: `prompt` (ask y/N), `1`/`always`, `0`/`never` |

@@ -1,24 +1,25 @@
 # Default AI model for opencode.
 # List available models: opencode models
 # Examples:
-#   opencode/deepseek-v4-flash-free   (free, default)
-#   opencode/deepseek-v4-flash
-#   opencode/claude-sonnet-4-6
-#   opencode/claude-haiku-4-5
-#   opencode/gpt-5.4-pro
-#   opencode/gemini-3.5-flash
-#   opencode/qwen3.5-plus
-export ASK_AI_MODEL="opencode/deepseek-v4-flash-free"
+#   opencode/mimo-v2.6-flash-free   (free, default)
+#   opencode/ling-3.0-flash-fin-free
+#   opencode/muse-spark-1.2-contributor-free
+#   opencode/muse-spark-1.3-contributor-free
+#   opencode/nemotron-3-ultra-free
+#   opencode/nemotron-3.5-lightning-free
+export ASK_AI_MODEL="opencode/mimo-v2.6-flash-free"
 
-# Reasoning effort for the AI model (passed as --variant to opencode).
-# Supported values depend on the model (e.g., high, max, minimal).
+# Reasoning effort for the AI model (opencode v2: passed as a model variant,
+# i.e. provider/model#variant — the --variant flag was removed in v2).
+# Supported values depend on the model; if the model has no such variant the
+# effort is skipped with a warning (the query still runs).
 # Uncomment to override the default:
 # export ASK_AI_EFFORT="high"
 # export ASK_AI_EFFORT="max"
 # export ASK_AI_EFFORT="minimal"
 
 # Operation mode for opencode (passed as --agent). Supports plan or build out of the box.
-# See also: opencode agent list
+# See also: opencode models
 # export ASK_AI_MODE="plan"
 # export ASK_AI_MODE="build"
 

@@ -192,6 +192,10 @@ REQUIRED_KEYS=(
     runner_lbl_attached
     runner_lbl_skipped_attach
     runner_lbl_clipboard
+    runner_lbl_effort_skipped
+    runner_lbl_effort_unknown
+    runner_lbl_effort_pinned
+    install_opencode_url
     dialog_history_label
     dialog_model_label
     sh_err_no_terminal
@@ -208,6 +212,21 @@ for locale_file in "$LOCALE_DIR"/en_EN "$LOCALE_DIR"/ru_RU; do
             fail "[$locale_name] Missing key '$key'"
         fi
     done
+done
+
+# The opencode install hint must point at the v2 installer (not the v1 /install,
+# which redirects, nor v1 package names opencode-ai / tap/opencode).
+for locale_file in "$LOCALE_DIR"/en_EN "$LOCALE_DIR"/ru_RU; do
+    locale_name=$(basename "$locale_file")
+    hint=$(grep '^install_opencode_url=' "$locale_file")
+    case "$hint" in
+        *opencode.ai/v2/install*) pass "[$locale_name] install hint uses /v2/install" ;;
+        *) fail "[$locale_name] install hint must use https://opencode.ai/v2/install" ;;
+    esac
+    case "$hint" in
+        *opencode-ai*|*tap/opencode[^-]*) fail "[$locale_name] install hint mentions a v1 package" ;;
+        *) pass "[$locale_name] install hint has no v1 package refs" ;;
+    esac
 done
 
 # --------------------------------
@@ -341,6 +360,66 @@ for needle in launch_in_terminal "Опиши эти файлы" INSTALL_DIR; do
         fail "Entry missing $needle"
     fi
 done
+
+# --------------------------------
+print_header "12. opencode v2: effort as model variant"
+# --------------------------------
+
+# v2 removed --variant; effort must reach opencode as provider/model#variant.
+# Explanatory comments may mention the flag — only executable lines count.
+if grep -vE '^[[:space:]]*#' "$RUNNER_FILE" | grep -qE -- '--variant'; then
+    fail "Runner must not pass the removed --variant flag"
+else
+    pass "Runner no longer passes --variant"
+fi
+
+for needle in ask_ai_apply_effort 'LBL_EFFORT_SKIPPED' 'LBL_EFFORT_UNKNOWN' 'LBL_EFFORT_PINNED'; do
+    if grep -qF "$needle" "$RUNNER_FILE" "$COMMON"; then
+        pass "References $needle"
+    else
+        fail "Missing $needle"
+    fi
+done
+
+# Theme vars are optional — runner must not crash under `set -u` when unset.
+# (Regression: `${ASK_AI_THEME,,}` aborted the runner before any output.)
+# Flag an expansion whose name is followed by anything other than a default/:-.
+if grep -vE '^[[:space:]]*#' "$RUNNER_FILE" \
+        | grep -qE '\$\{(ASK_AI_THEME|COLORFGBG)[^-:]'; then
+    fail "ASK_AI_THEME/COLORFGBG must be expanded with a default"
+else
+    pass "Theme vars expanded with defaults"
+fi
+
+# ask_ai_apply_effort return-code contract
+source "$COMMON"
+effort_rc() { local rc=0; ask_ai_apply_effort "$1" "$2" >/dev/null 2>&1 || rc=$?; echo "$rc"; }
+
+# pinned model is rejected before any opencode call → deterministic rc=3
+[ "$(effort_rc "opencode/deepseek-v4-flash#max" "high")" = "3" ] \
+    && pass "pinned model → rc 3" || fail "pinned model should return 3"
+# empty effort → rc 2
+[ "$(effort_rc "opencode/deepseek-v4-flash" "")" = "2" ] \
+    && pass "empty effort → rc 2" || fail "empty effort should return 2"
+
+if command -v opencode &>/dev/null; then
+    # Without opencode installed this is rc=2 (cannot verify) — accepted.
+    rc_out=$(effort_rc "opencode/deepseek-v4-flash" "high")
+    case "$rc_out" in
+        0) pass "supported variant → rc 0" ;;
+        1) pass "variant check → rc 1 (model unknown to this opencode)" ;;
+        2) pass "variant check → rc 2 (catalog unavailable)" ;;
+        *) fail "unexpected rc $rc_out" ;;
+    esac
+    if [ "$rc_out" = "0" ]; then
+        out=$(ask_ai_apply_effort "opencode/deepseek-v4-flash" "high")
+        [ "$out" = "opencode/deepseek-v4-flash#high" ] \
+            && pass "output is model#variant" || fail "got '$out'"
+    fi
+else
+    [ "$(effort_rc "opencode/deepseek-v4-flash" "high")" = "2" ] \
+        && pass "no opencode → rc 2" || fail "should return 2 without opencode"
+fi
 
 # --------------------------------
 echo ""

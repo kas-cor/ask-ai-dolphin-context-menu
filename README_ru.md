@@ -20,7 +20,7 @@
 
 - **Пресеты запросов** — настраиваемый список быстрых запросов
 - **Произвольный запрос** — поле ввода для своего вопроса
-- **Выбор модели** — через переменную `ASK_AI_MODEL` (по умолчанию бесплатная `opencode/deepseek-v4-flash-free`)
+- **Выбор модели** — через переменную `ASK_AI_MODEL` (по умолчанию бесплатная `opencode/mimo-v2.6-flash-free`)
 - **Стриминг ответа** — ответ выводится через `glow` с подсветкой Markdown в реальном времени
 - **Работа без выделения** — если ничего не выделено, передаётся текущая директория
 - **PyQt диалог** — многострочный ввод, пресеты, история; стиль Breeze (PyQt5 / PyQt6)
@@ -76,7 +76,9 @@ askr "Вывод без glow"
 ```bash
 sudo pacman -S python-pyqt5 kdialog konsole
 yay -S glow-bin  # или sudo pacman -S glow, если есть в репозиториях
-# opencode — установите по документации https://opencode.ai
+# opencode v2 — установка:
+curl -fsSL https://opencode.ai/v2/install | bash
+# альтернативы: sudo pacman -S opencode | npm i -g @opencode/cli | brew install anomalyco/tap/opencode-v2 | yay -S opencode-beta
 ```
 
 ## Установка
@@ -131,8 +133,8 @@ nano ~/.ask_ai
 
 | Переменная | По умолчанию | Описание |
 |---|---|---|
-| `ASK_AI_MODEL` | `opencode/deepseek-v4-flash-free` | Модель AI для opencode. Список: `opencode models` |
-| `ASK_AI_EFFORT` | пусто | Уровень усилий (`--variant`). Значения: `high`, `max`, `minimal` |
+| `ASK_AI_MODEL` | `opencode/mimo-v2.6-flash-free` | Модель AI для opencode. Список: `opencode models` |
+| `ASK_AI_EFFORT` | пусто | Уровень усилий. opencode v2: передаётся как вариант модели `provider/model#variant` (флаг `--variant` в v2 удалён). Значения зависят от модели (`high`, `max`, `minimal`, …); если у модели нет такого варианта — пропускается с предупреждением |
 | `ASK_AI_MODE` | пусто | Режим (`--agent`). Встроенные: `plan`, `build` |
 | `ASK_AI_SAVE_DIR` | пусто | Сохранять ответы в папку (`<query-slug>-<timestamp>.md`) |
 | `ASK_AI_AUTO_EXEC` | `prompt` | Политика скриптов: `prompt` (спросить), `1`/`always`, `0`/`never` |
