@@ -135,7 +135,7 @@ nano ~/.ask_ai
 |---|---|---|
 | `ASK_AI_MODEL` | `opencode/mimo-v2.6-flash-free` | AI model for opencode. List: `opencode models` |
 | `ASK_AI_EFFORT` | unset | Reasoning effort. opencode v2: applied as a model variant `provider/model#variant` (`--variant` was removed in v2). Values depend on the model (`high`, `max`, `minimal`, …); skipped with a warning if the model has no such variant |
-| `ASK_AI_MODE` | unset | Operation mode (passed as `--agent` to opencode). Built-in: `plan`, `build`. List: `opencode models` |
+| `ASK_AI_MODE` | `plan` | Operation mode (passed as `--agent` to opencode). Built-in: `plan`, `build`. `plan` is read-only — the model answers, never edits files. The flag is always passed explicitly: in opencode v2 an agent inherited from the opencode config adds a spurious second turn to the output |
 | `ASK_AI_SAVE_DIR` | unset | Save AI responses to this directory (e.g., `~/ask-ai-results`). Creates `<query-slug>-<timestamp>.md` files |
 | `ASK_AI_AUTO_EXEC` | `prompt` | Shebang script policy: `prompt` (ask y/N), `1`/`always`, `0`/`never` |
 | `ASK_AI_CLIPBOARD` | unset | Set `1` to copy the response to the clipboard |
@@ -151,7 +151,7 @@ nano ~/.ask_ai
 ```bash
 export ASK_AI_MODEL="opencode/deepseek-v4-flash"
 export ASK_AI_EFFORT="max"     # maximum reasoning effort
-export ASK_AI_MODE="plan"      # plan mode (uses --agent plan)
+export ASK_AI_MODE="build"    # let the model edit files (default is plan)
 export ASK_AI_AUTO_EXEC="0"    # never auto-run generated scripts
 export ASK_AI_CLIPBOARD=1      # copy answer to clipboard
 export GLOW_DISABLED=1

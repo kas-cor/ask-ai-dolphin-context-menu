@@ -201,6 +201,14 @@ fi
 
 MODEL="${ASK_AI_MODEL:-opencode/mimo-v2.6-flash-free}"
 
+# opencode v2: always pass an explicit agent. Without a --agent flag the model
+# is taken from the user's opencode config (default_agent), and v2 then appends
+# a spurious second assistant turn to `opencode run` output — it pollutes the
+# terminal and every saved .md. An explicit --agent suppresses that turn.
+# `plan` keeps the plugin read-only: the model answers and plans, but never
+# edits the selected files. Set ASK_AI_MODE=build to let it modify them.
+MODE="${ASK_AI_MODE:-plan}"
+
 # opencode v2: effort is a model variant (provider/model#variant), not --variant.
 # Only applied when the model actually declares it, so the query never fails.
 EXTRA_FLAGS=()
@@ -236,10 +244,8 @@ echo -e "${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
 if [ -n "${EFFORT_LINE:-}" ]; then
     echo -e "$EFFORT_LINE"
 fi
-if [ -n "${ASK_AI_MODE:-}" ]; then
-    EXTRA_FLAGS+=(--agent "$ASK_AI_MODE")
-    echo -e "${BOLD}${LBL_MODE}${NC} ${FILE_CYAN}${ASK_AI_MODE}${NC}"
-fi
+EXTRA_FLAGS+=(--agent "$MODE")
+echo -e "${BOLD}${LBL_MODE}${NC} ${FILE_CYAN}${MODE}${NC}"
 
 if [ ${#ATTACHED_NAMES[@]} -gt 0 ]; then
     echo -e "${BOLD}${LBL_ATTACHED}${NC} ${FILE_CYAN}${#ATTACHED_NAMES[@]}${NC}"
