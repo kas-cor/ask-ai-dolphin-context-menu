@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1](https://github.com/kas-cor/ask-ai-dolphin-context-menu/compare/v1.2.0...v1.2.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* code review follow-up on v1.2.0 — strict mode + slug sanitize ([fcef647](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/fcef6470b5020fa3ddd25e6a6e92de4add9e80c3))
+* make script save and opencode launch reliable on real v2 setups ([1213bcd](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/1213bcdcbeb8519a69df6160e57899932929d5d5))
+* pass explicit --agent to opencode run to avoid v2 duplicate turn ([5566c0e](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/5566c0e3ddeb628784d98b99ef79dec1304d557e))
+* use printf for file/query display to prevent ANSI injection via paths ([84c7392](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/84c7392993d48dc90dd2994b09a87ec4e7c2ef0c))
+
 ## [1.2.0](https://github.com/kas-cor/ask-ai-dolphin-context-menu/compare/v1.1.0...v1.2.0) (2026-07-16)
 
 
