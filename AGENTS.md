@@ -51,7 +51,7 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 |---|---|---|
 | `ASK_AI_MODEL` | `opencode/mimo-v2.6-flash-free` | AI model for opencode. List: `opencode models` |
 | `ASK_AI_EFFORT` | unset | Reasoning effort. opencode v2: applied as model variant `provider/model#variant` (`--variant` removed in v2). Values are model-specific; skipped with a warning if unsupported |
-| `ASK_AI_MODE` | unset | Agent mode (`--agent`). Built-in: `plan`, `build` |
+| `ASK_AI_MODE` | `plan` | Agent mode (`--agent`). Built-in: `plan`, `build`. Always passed explicitly — opencode v2 adds a spurious second turn when the agent comes from the opencode config (`default_agent`) |
 | `ASK_AI_SAVE_DIR` | unset | Save responses as `<query-slug>-<timestamp>.md` |
 | `ASK_AI_AUTO_EXEC` | `prompt` | Script run policy: `prompt` (ask y/N), `1`/`always`, `0`/`never` |
 | `ASK_AI_CLIPBOARD` | unset | Set `1` to copy response to clipboard (wl-copy/xclip/xsel) |

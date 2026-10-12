@@ -421,6 +421,22 @@ else
         && pass "no opencode → rc 2" || fail "should return 2 without opencode"
 fi
 
+# opencode v2: --agent must always be passed explicitly. When the agent is
+# inherited from the opencode config (default_agent), v2 appends a spurious
+# second assistant turn to `opencode run` output — it pollutes the terminal and
+# every saved .md. Default agent is plan (read-only); ASK_AI_MODE overrides it.
+if grep -vE '^[[:space:]]*#' "$RUNNER_FILE" | grep -qF -- '--agent "$MODE"'; then
+    pass "Runner always passes an explicit --agent"
+else
+    fail "Runner must pass --agent explicitly (opencode v2 duplicate turn)"
+fi
+
+if grep -qF 'MODE="${ASK_AI_MODE:-plan}"' "$RUNNER_FILE"; then
+    pass "Default agent is plan (ASK_AI_MODE overridable)"
+else
+    fail "MODE must default to plan"
+fi
+
 # --------------------------------
 echo ""
 if [ "$FAILED" -eq 1 ]; then

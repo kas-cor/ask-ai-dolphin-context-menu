@@ -19,8 +19,10 @@ export ASK_AI_MODEL="opencode/mimo-v2.6-flash-free"
 # export ASK_AI_EFFORT="minimal"
 
 # Operation mode for opencode (passed as --agent). Supports plan or build out of the box.
-# See also: opencode models
-# export ASK_AI_MODE="plan"
+# The plugin always passes --agent explicitly: in opencode v2 an agent taken from
+# the opencode config (default_agent) adds a spurious second turn to the output.
+# Default is plan (read-only): the model answers and plans but never edits files.
+# Uncomment to let the model modify the selected files:
 # export ASK_AI_MODE="build"
 
 # UI language for the PyQt dialog and Konsole runner.

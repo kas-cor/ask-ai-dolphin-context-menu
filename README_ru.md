@@ -135,7 +135,7 @@ nano ~/.ask_ai
 |---|---|---|
 | `ASK_AI_MODEL` | `opencode/mimo-v2.6-flash-free` | Модель AI для opencode. Список: `opencode models` |
 | `ASK_AI_EFFORT` | пусто | Уровень усилий. opencode v2: передаётся как вариант модели `provider/model#variant` (флаг `--variant` в v2 удалён). Значения зависят от модели (`high`, `max`, `minimal`, …); если у модели нет такого варианта — пропускается с предупреждением |
-| `ASK_AI_MODE` | пусто | Режим (`--agent`). Встроенные: `plan`, `build` |
+| `ASK_AI_MODE` | `plan` | Режим (`--agent`). Встроенные: `plan`, `build`. `plan` — только чтение: модель отвечает и планирует, но не меняет файлы. Флаг передаётся всегда явно: в opencode v2 агент, унаследованный из конфига opencode, добавляет лишний второй ход в вывод |
 | `ASK_AI_SAVE_DIR` | пусто | Сохранять ответы в папку (`<query-slug>-<timestamp>.md`) |
 | `ASK_AI_AUTO_EXEC` | `prompt` | Политика скриптов: `prompt` (спросить), `1`/`always`, `0`/`never` |
 | `ASK_AI_CLIPBOARD` | пусто | `1` — копировать ответ в буфер обмена |
@@ -151,7 +151,7 @@ nano ~/.ask_ai
 ```bash
 export ASK_AI_MODEL="opencode/deepseek-v4-flash"
 export ASK_AI_EFFORT="max"
-export ASK_AI_MODE="plan"
+export ASK_AI_MODE="build"    # разрешить модели менять файлы (по умолчанию plan)
 export ASK_AI_AUTO_EXEC="0"    # никогда не запускать сгенерированные скрипты
 export ASK_AI_CLIPBOARD=1
 export GLOW_DISABLED=1
