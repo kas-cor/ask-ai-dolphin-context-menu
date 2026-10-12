@@ -189,6 +189,7 @@ REQUIRED_KEYS=(
     runner_lbl_run_confirm
     runner_lbl_script_skipped
     runner_lbl_opencode_failed
+    runner_lbl_err_opencode_v2
     runner_lbl_attached
     runner_lbl_skipped_attach
     runner_lbl_clipboard
@@ -435,6 +436,194 @@ if grep -qF 'MODE="${ASK_AI_MODE:-plan}"' "$RUNNER_FILE"; then
     pass "Default agent is plan (ASK_AI_MODE overridable)"
 else
     fail "MODE must default to plan"
+fi
+
+# --------------------------------
+print_header "13. Script save: opencode v2 response shapes (e2e)"
+# --------------------------------
+# Runs the real runner with a shimmed `opencode` (no network, deterministic)
+# against canned response shapes. Covers the v2 plan-style answer: prose
+# before the fenced script and commentary after it — detection must find the
+# shebang block anywhere, not only when it opens the response.
+
+SHIM_DIR="$TEST_DIR/opencode-shim"
+FAKE_SAVE_DIR="$TEST_DIR/fake-save"
+mkdir -p "$SHIM_DIR" "$FAKE_SAVE_DIR"
+
+cat > "$SHIM_DIR/opencode" <<'SHIM'
+#!/bin/bash
+# Shim: report a v2 version (so the resolver picks it) and print the canned
+# response for `run`; ignore everything else.
+if [ "${1:-}" = "--version" ]; then
+    echo "v2.0.27"
+    exit 0
+fi
+if [ -n "${FAKE_RESPONSE:-}" ]; then
+    cat "$FAKE_RESPONSE"
+fi
+exit 0
+SHIM
+chmod +x "$SHIM_DIR/opencode"
+
+printf 'print("hi")\n' > "$TEST_DIR/attach-sample.py"
+
+run_fake_runner() {  # $1 = canned response file, $2 = label
+    rm -f "$FAKE_SAVE_DIR"/*
+    FAKE_RESPONSE="$1" PATH="$SHIM_DIR:$PATH" \
+        GLOW_DISABLED=1 ASK_AI_AUTO_EXEC=0 ASK_AI_SAVE_DIR="$FAKE_SAVE_DIR" \
+        bash "$RUNNER_FILE" "test query" "$TEST_DIR/attach-sample.py" \
+        </dev/null >"$TEST_DIR/fake-run-$2.log" 2>&1
+}
+
+count_sh() {
+    find "$FAKE_SAVE_DIR" -maxdepth 1 -type f -name '*.sh' | wc -l
+}
+
+# --- 13a. Prose first, fenced shebang block in the middle, trailing prose
+cat > "$TEST_DIR/resp-prose-first.txt" <<'EOF'
+**Объяснение одной строкой:** скрипт печатает дату.
+
+```bash
+#!/bin/bash
+echo hello-from-v2
+```
+
+Готово — сохраните как show-date.sh и сделайте chmod +x.
+EOF
+
+run_fake_runner "$TEST_DIR/resp-prose-first.txt" prose
+if [ "$(count_sh)" = "1" ]; then
+    pass "Prose-first v2 response → script detected"
+    sh_file=$(find "$FAKE_SAVE_DIR" -maxdepth 1 -type f -name '*.sh')
+    [ "$(head -n1 "$sh_file")" = "#!/bin/bash" ] \
+        && pass "Extracted block starts with shebang" \
+        || fail "Extracted block must start with shebang"
+    grep -qF 'echo hello-from-v2' "$sh_file" \
+        && pass "Script body extracted" || fail "Script body missing"
+    if grep -qF 'Объяснение' "$sh_file" || grep -qF 'Готово' "$sh_file"; then
+        fail "Prose must not leak into the .sh"
+    else
+        pass "No prose leaked into the .sh"
+    fi
+    [ -x "$sh_file" ] && pass "Script is chmod +x" || fail "Script not executable"
+    out=$("$sh_file" 2>&1) || out="EXIT:$?"
+    [ "$out" = "hello-from-v2" ] \
+        && pass "Extracted script runs: '$out'" || fail "Script output: '$out'"
+    glob_md=("$FAKE_SAVE_DIR"/*.md)
+    [ -f "${glob_md[0]}" ] && grep -qF 'Объяснение' "${glob_md[0]}" \
+        && pass ".md keeps the full response" || fail ".md missing or truncated"
+else
+    fail "Prose-first v2 response should produce exactly 1 .sh, got $(count_sh)"
+fi
+
+# --- 13b. Raw shebang on the first line → whole response is the script
+cat > "$TEST_DIR/resp-raw.txt" <<'EOF'
+#!/bin/bash
+echo raw-v2
+EOF
+
+run_fake_runner "$TEST_DIR/resp-raw.txt" raw
+if [ "$(count_sh)" = "1" ]; then
+    sh_file=$(find "$FAKE_SAVE_DIR" -maxdepth 1 -type f -name '*.sh')
+    if diff -q "$sh_file" "$TEST_DIR/resp-raw.txt" >/dev/null; then
+        pass "Raw first-line shebang → whole response saved as .sh"
+    else
+        fail "Raw shebang response should be saved verbatim"
+    fi
+else
+    fail "Raw shebang should produce 1 .sh, got $(count_sh)"
+fi
+
+# --- 13c. Fence without a shebang → not a script
+cat > "$TEST_DIR/resp-no-shebang.txt" <<'EOF'
+**Идея:**
+
+```bash
+echo no-shebang
+```
+EOF
+
+run_fake_runner "$TEST_DIR/resp-no-shebang.txt" noshebang
+if [ "$(count_sh)" = "0" ]; then
+    pass "Fenced block without shebang → no .sh"
+else
+    fail "Fence without shebang must not create a .sh"
+fi
+
+# --- 13d. Plain prose → not a script
+cat > "$TEST_DIR/resp-plain.txt" <<'EOF'
+Просто ответ без кода: файл печатает hi.
+EOF
+
+run_fake_runner "$TEST_DIR/resp-plain.txt" plain
+if [ "$(count_sh)" = "0" ]; then
+    pass "Plain prose → no .sh"
+else
+    fail "Plain prose must not create a .sh"
+fi
+
+# --------------------------------
+print_header "14. opencode v2 resolver (v1 in PATH must be skipped)"
+# --------------------------------
+# The Dolphin→konsole session PATH does not source ~/.zshrc, so `opencode` can
+# resolve to a system v1 build (e.g. /usr/sbin/opencode 1.x): v1's `run -f`
+# is an array that swallows the prompt and dies with "File not found: <prompt>".
+# ask_ai_opencode_bin must pick the first binary with a major version >= 2.
+
+R14="$TEST_DIR/resolver"
+mkdir -p "$R14/v1bin" "$R14/v2bin" "$R14/home/.opencode/bin" "$R14/emptyhome"
+
+cat > "$R14/v1bin/opencode" <<'EOF'
+#!/bin/bash
+if [ "${1:-}" = "--version" ]; then echo "1.19.0"; exit 0; fi
+exit 0
+EOF
+cat > "$R14/v2bin/opencode" <<'EOF'
+#!/bin/bash
+if [ "${1:-}" = "--version" ]; then echo "v2.0.27"; exit 0; fi
+exit 0
+EOF
+chmod +x "$R14/v1bin/opencode" "$R14/v2bin/opencode"
+cp "$R14/v2bin/opencode" "$R14/home/.opencode/bin/opencode"
+
+source "$COMMON"
+
+# A: v1 sits earlier in PATH than v2 → v2 must still win
+got=$(export HOME="$R14/emptyhome" PATH="$R14/v1bin:$R14/v2bin:/usr/bin:/bin"; ask_ai_opencode_bin 2>/dev/null)
+if [ "$got" = "$R14/v2bin/opencode" ]; then
+    pass "v2 wins over an earlier v1 in PATH"
+else
+    fail "expected $R14/v2bin/opencode, got '${got:-nothing}'"
+fi
+
+# B: only v1 in PATH, v2 in ~/.opencode/bin → HOME candidate wins
+got=$(export HOME="$R14/home" PATH="$R14/v1bin:/usr/bin:/bin"; ask_ai_opencode_bin 2>/dev/null)
+if [ "$got" = "$R14/home/.opencode/bin/opencode" ]; then
+    pass "~/.opencode/bin v2 used when PATH has only v1"
+else
+    fail "expected $R14/home/.opencode/bin/opencode, got '${got:-nothing}'"
+fi
+
+# C: only v1 anywhere → resolver must fail (runner then prints a clear error)
+if got=$(export HOME="$R14/emptyhome" PATH="$R14/v1bin:/usr/bin:/bin"; ask_ai_opencode_bin 2>/dev/null); then
+    fail "v1-only environment should not resolve, got '$got'"
+else
+    pass "v1-only environment → not resolved"
+fi
+
+# D: no opencode at all → not resolved
+if got=$(export HOME="$R14/emptyhome" PATH="/usr/bin:/bin"; ask_ai_opencode_bin 2>/dev/null); then
+    fail "missing opencode should not resolve, got '$got'"
+else
+    pass "no opencode → not resolved"
+fi
+
+# Runner must report the dedicated v2 error (not the generic one) when only
+# v1 is available — checked statically; the live path is covered by 14a–d.
+if grep -qF 'LBL_ERR_OPENCODE_V2' "$RUNNER_FILE"; then
+    pass "Runner has a dedicated 'v2 required' error message"
+else
+    fail "Runner missing LBL_ERR_OPENCODE_V2 handling"
 fi
 
 # --------------------------------

@@ -56,6 +56,7 @@ LBL_MODE="${runner_lbl_mode:-Mode:}"
 LBL_STREAMING="${runner_lbl_streaming:-Streaming AI response...}"
 LBL_GLOW_MISSING="${runner_lbl_glow_missing:-glow not found -- output without formatting}"
 LBL_ERR_OPENCODE="${runner_lbl_err_opencode:-Error: opencode not found in PATH}"
+LBL_ERR_OPENCODE_V2="${runner_lbl_err_opencode_v2:-Error: opencode v2 not found — only an older version is in PATH. Install: https://opencode.ai/v2/install}"
 LBL_DONE="${runner_lbl_done:-Done. Press Ctrl+C or Enter to close.}"
 LBL_SAVED="${runner_lbl_saved:-Saved to:}"
 LBL_EXECUTING="${runner_lbl_executing:-Executing script...}"
@@ -193,9 +194,23 @@ fi
 PROMPT+="
 My question about them: $QUERY"
 
-# --- Check opencode ---
-if ! command -v opencode &>/dev/null; then
-    echo -e "${BOLD}${ERR_RED}${LBL_ERR_OPENCODE}${NC}"
+# --- Check opencode (v2 required) ---
+# The GUI session PATH may resolve `opencode` to a system v1 build; v1 breaks
+# `run -f` (it swallows the prompt and dies with "File not found: <prompt>").
+# ask_ai_opencode_bin picks the first v2 binary (PATH → ~/.opencode/bin →
+# ~/.local/bin); without common.sh fall back to whatever is in PATH.
+OPENCODE_BIN=""
+if declare -F ask_ai_opencode_bin &>/dev/null; then
+    OPENCODE_BIN=$(ask_ai_opencode_bin 2>/dev/null || true)
+else
+    OPENCODE_BIN=$(command -v opencode 2>/dev/null || true)
+fi
+if [ -z "$OPENCODE_BIN" ]; then
+    if command -v opencode &>/dev/null; then
+        echo -e "${BOLD}${ERR_RED}${LBL_ERR_OPENCODE_V2}${NC}"
+    else
+        echo -e "${BOLD}${ERR_RED}${LBL_ERR_OPENCODE}${NC}"
+    fi
     exit 1
 fi
 
@@ -288,12 +303,12 @@ echo ""
 set -o pipefail
 OPENCODE_STATUS=0
 if [ "${GLOW_DISABLED:-0}" = "1" ]; then
-    opencode run --model "$MODEL" "${EXTRA_FLAGS[@]}" "${ATTACH_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT" || OPENCODE_STATUS=$?
+    "$OPENCODE_BIN" run --model "$MODEL" "${EXTRA_FLAGS[@]}" "${ATTACH_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT" || OPENCODE_STATUS=$?
 elif command -v glow &>/dev/null; then
-    opencode run --model "$MODEL" "${EXTRA_FLAGS[@]}" "${ATTACH_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT" | glow - || OPENCODE_STATUS=$?
+    "$OPENCODE_BIN" run --model "$MODEL" "${EXTRA_FLAGS[@]}" "${ATTACH_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT" | glow - || OPENCODE_STATUS=$?
 else
     echo -e "${LABEL_YELLOW}${LBL_GLOW_MISSING}${NC}"
-    opencode run --model "$MODEL" "${EXTRA_FLAGS[@]}" "${ATTACH_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT" || OPENCODE_STATUS=$?
+    "$OPENCODE_BIN" run --model "$MODEL" "${EXTRA_FLAGS[@]}" "${ATTACH_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT" || OPENCODE_STATUS=$?
 fi
 set +o pipefail
 
@@ -319,9 +334,14 @@ if [ "${ASK_AI_CLIPBOARD:-0}" = "1" ] && [ -s "$TEMP_OUTPUT" ]; then
     fi
 fi
 
-# --- Shebang / script detection ---
-# First non-empty line; if markdown fence (```), peek next line for shebang.
+# --- Shebang / script detection (opencode v2 output shapes) ---
+# Raw shebang on the first non-empty line → the whole response is a script.
+# Otherwise scan the response for the first fenced block whose first non-empty
+# line is a shebang: opencode v2 (plan-style answers) often starts with prose
+# before the code, and may add commentary after it. Only that block is
+# extracted into the .sh — the full response stays in the .md.
 SCRIPT_SOURCE="$TEMP_OUTPUT"
+EXTRACTED="${TEMP_OUTPUT}.script"
 FIRST_CONTENT=""
 while IFS= read -r _line || [ -n "$_line" ]; do
     [ -z "$_line" ] && continue
@@ -332,34 +352,38 @@ done < "$TEMP_OUTPUT"
 IS_SCRIPT=0
 if [[ "$FIRST_CONTENT" == "#!"* ]]; then
     IS_SCRIPT=1
-elif [[ "$FIRST_CONTENT" == \`\`\`* ]]; then
-    _seen_fence=0
-    while IFS= read -r _line || [ -n "$_line" ]; do
-        [ -z "$_line" ] && continue
-        if [ "$_seen_fence" -eq 0 ]; then
-            _seen_fence=1
-            continue
-        fi
-        if [[ "$_line" == "#!"* ]]; then
-            IS_SCRIPT=1
-            EXTRACTED="${TEMP_OUTPUT}.script"
-            # Extract the first fenced code block only (non-greedy .*?).
-            # If the response has multiple code blocks, only the first one
-            # becomes the saved/executed script. To keep the full response
-            # (including all blocks), set ASK_AI_SAVE_DIR.
-            if python3 -c "
-import sys, re
-text = open(sys.argv[1], encoding='utf-8', errors='replace').read()
-# Non-greedy capture: first \`\`\` … \`\`\` pair
-m = re.search(r'^\`\`\`[^\n]*\n(.*?)(?:\n\`\`\`|\Z)', text, re.S | re.M)
-body = m.group(1) if m else text
-open(sys.argv[2], 'w', encoding='utf-8').write(body if body.endswith('\n') else body + '\n')
-" "$TEMP_OUTPUT" "$EXTRACTED" 2>/dev/null; then
-                SCRIPT_SOURCE="$EXTRACTED"
-            fi
-        fi
-        break
-    done < "$TEMP_OUTPUT"
+else
+    # Detection and extraction are one step: a script is reported only when
+    # the block body was actually written (no half-extracted .sh files).
+    if python3 - "$TEMP_OUTPUT" "$EXTRACTED" <<'PY' 2>/dev/null
+import sys
+
+src, dst = sys.argv[1], sys.argv[2]
+with open(src, encoding="utf-8", errors="replace") as fh:
+    lines = fh.read().splitlines()
+
+i = 0
+while i < len(lines):
+    if lines[i].lstrip().startswith("```"):
+        # opening fence → scan to the closing fence
+        j = i + 1
+        while j < len(lines) and not lines[j].lstrip().startswith("```"):
+            j += 1
+        body = lines[i + 1:j]
+        first = next((ln for ln in body if ln.strip()), "")
+        if first.startswith("#!"):
+            with open(dst, "w", encoding="utf-8") as out:
+                out.write("\n".join(body).rstrip("\n") + "\n")
+            sys.exit(0)
+        i = j + 1  # no shebang in this block → keep looking
+        continue
+    i += 1
+sys.exit(1)
+PY
+    then
+        IS_SCRIPT=1
+        SCRIPT_SOURCE="$EXTRACTED"
+    fi
 fi
 
 if [ "$IS_SCRIPT" -eq 1 ]; then
