@@ -78,6 +78,46 @@ ask_ai_file_size() {
     fi
 }
 
+# Locate a usable opencode v2 binary and print its path.
+#
+# The GUI path (Dolphin → konsole -e) inherits the desktop session PATH, which
+# does not source ~/.zshrc (or ~/.bashrc), so `opencode` can resolve to a system
+# v1 build (e.g. /usr/sbin/opencode 1.x). v1 is incompatible with this plugin:
+# its `run -f` flag is an array that swallows the prompt too and fails with
+# "File not found: <prompt>". Candidates are checked in order — PATH hit,
+# ~/.opencode/bin (the official v2 installer location), ~/.local/bin — and the
+# first one whose major version is >= 2 wins. Every directory in $PATH is
+# considered, not just the first hit: an older system v1 must not hide a v2
+# that sits further along the PATH.
+# Returns 1 when no v2 binary is found.
+ask_ai_opencode_bin() {
+    local candidates=() cand dir ver major seen=""
+    local old_ifs="$IFS"
+    IFS=':'
+    for dir in $PATH; do
+        [ -n "$dir" ] || continue
+        [ -x "$dir/opencode" ] && candidates+=("$dir/opencode")
+    done
+    IFS="$old_ifs"
+    candidates+=("${HOME:-}/.opencode/bin/opencode" "${HOME:-}/.local/bin/opencode")
+
+    for cand in "${candidates[@]}"; do
+        [ -n "$cand" ] && [ -x "$cand" ] || continue
+        case "$seen" in *"|$cand|"*) continue ;; esac
+        seen+="|$cand|"
+        ver=$("$cand" --version 2>/dev/null | head -n1) || continue
+        # Both "opencode v2.0.27" (v2) and bare "1.19.0" (v1) occur — pull
+        # the first numeric version token, then check its major component.
+        ver=$(printf '%s' "$ver" | grep -oE '[0-9]+(\.[0-9]+)*' | head -n1)
+        major="${ver%%.*}"
+        case "$major" in ''|*[!0-9]*) continue ;; esac
+        [ "$major" -ge 2 ] 2>/dev/null || continue
+        printf '%s\n' "$cand"
+        return 0
+    done
+    return 1
+}
+
 # Resolve reasoning effort for opencode v2.
 # v2 removed the `--variant` flag — effort is now a model variant passed inside
 # the model id: --model "provider/model#variant". Variants are model-specific
@@ -94,14 +134,15 @@ ask_ai_apply_effort() {
     local model="${1:-}" effort="${2:-}"
     [ -n "$model" ] && [ -n "$effort" ] || return 2
     case "$model" in *\#*) return 3 ;; esac
-    command -v opencode &>/dev/null || return 2
+    local oc_bin
+    oc_bin=$(ask_ai_opencode_bin 2>/dev/null) || return 2
     command -v python3 &>/dev/null || return 2
 
     local payload_file
     # opencode v2 truncates stdout to 256 KiB when it is a pipe/command
     # substitution; a redirect to a regular file yields the full catalog.
     payload_file=$(mktemp) || return 2
-    if ! opencode api GET /api/model > "$payload_file" 2>/dev/null; then
+    if ! "$oc_bin" api GET /api/model > "$payload_file" 2>/dev/null; then
         rm -f "$payload_file"
         return 2
     fi
