@@ -8,6 +8,8 @@ network, an API key or a real harness. Behaviour is selected with env vars:
   FAKE_ACP_TOOL_KIND  tool kind reported in the permission request (default: edit)
   FAKE_ACP_LOG        JSON-lines file recording what the agent observed
   FAKE_ACP_NO_OPTIONS "1" → session/new without model/effort/mode options
+  FAKE_ACP_LOAD       "1" → advertise loadSession and accept session/load
+  FAKE_ACP_LOAD_FAIL  "1" → make session/load fail (expired session)
 """
 
 import json
@@ -19,6 +21,9 @@ SCENARIO = os.environ.get("FAKE_ACP_SCENARIO", "basic")
 TOOL_KIND = os.environ.get("FAKE_ACP_TOOL_KIND", "edit")
 LOG_PATH = os.environ.get("FAKE_ACP_LOG", "")
 NO_OPTIONS = os.environ.get("FAKE_ACP_NO_OPTIONS") == "1"
+MODE_VALUES = [v for v in (os.environ.get("FAKE_ACP_MODES") or "plan,build").split(",") if v]
+LOAD_SESSION = os.environ.get("FAKE_ACP_LOAD") == "1"
+LOAD_FAIL = os.environ.get("FAKE_ACP_LOAD_FAIL") == "1"
 SESSION_ID = "sess_fake_1"
 
 
@@ -88,11 +93,8 @@ def config_options():
             "name": "Mode",
             "category": "mode",
             "type": "select",
-            "currentValue": "plan",
-            "options": [
-                {"value": "plan", "name": "Plan"},
-                {"value": "build", "name": "Build"},
-            ],
+            "currentValue": MODE_VALUES[0],
+            "options": [{"value": v, "name": v} for v in MODE_VALUES],
         },
     ]
 
@@ -207,7 +209,7 @@ def main():
                     "result": {
                         "protocolVersion": 1,
                         "agentCapabilities": {
-                            "loadSession": False,
+                            "loadSession": LOAD_SESSION,
                             "promptCapabilities": {"embeddedContext": True, "image": False},
                         },
                         "authMethods": [
@@ -217,8 +219,29 @@ def main():
                     },
                 }
             )
+        elif method == "session/load":
+            record(loaded_session=params.get("sessionId"), load_cwd=params.get("cwd"))
+            if LOAD_FAIL:
+                send(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "error": {"code": -32002, "message": "session not found"},
+                    }
+                )
+                continue
+            send(
+                {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "sessionId": params.get("sessionId") or SESSION_ID,
+                        "configOptions": config_options(),
+                    },
+                }
+            )
         elif method == "session/new":
-            record(session_new_cwd=params.get("cwd"))
+            record(new_session=True, session_new_cwd=params.get("cwd"))
             send(
                 {
                     "jsonrpc": "2.0",

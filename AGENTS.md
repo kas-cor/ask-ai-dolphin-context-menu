@@ -38,7 +38,7 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 | `src/ask-ai-dolphin.sh` | Entry point: config, dialog, terminal launch |
 | `src/ask-ai-dolphin-run.sh` | Runner: opencode + glow, save, script confirm |
 | `src/ask-ai-dolphin-dialog.py` | Dialog: presets, history, multi-line input (i18n EN/RU) |
-| `src/ask-ai-acp-client.py` | ACP client (experimental, `ASK_AI_ACP=1`): drives any ACP agent over stdio, streams the answer |
+| `src/ask-ai-acp-client.py` | ACP client (default harness): initialize/session-new/load, config options, permissions, streaming; `--probe` dumps agent capabilities |
 | `servicemenu/ask-ai-dolphin.desktop` | KDE service menu (`Name[ru]`) |
 | `config/ask-ai-dolphin.cfg.example` | Example presets (EN) |
 | `config/ask-ai-dolphin.cfg.ru_RU.example` | Example presets (RU) |
@@ -62,11 +62,13 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 | `ASK_AI_LOCALE` | auto (`$LANG`) | Force UI language: `ru_RU` / `en_EN` |
 | `ASK_AI_THEME` | auto (palette / COLORFGBG) | Force UI theme: `dark` / `light` |
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
-| `ASK_AI_ACP` | unset | `1` runs the query through an ACP agent instead of `opencode run` |
-| `ASK_AI_AGENT_CMD` | `opencode acp` | ACP agent command line (`gemini --experimental-acp`, `claude-code-acp`, `codex-acp`, …) |
-| `ASK_AI_PERMISSION` | `allow-read` | `session/request_permission` policy: allow read/search/fetch, deny the rest |
+| `ASK_AI_HARNESS` | `acp` | `acp` runs the query through `ask-ai-acp-client.py`; `cli` uses the legacy `opencode run` path |
+| `ASK_AI_AGENT_CMD` | `opencode acp` | ACP agent command line (`gemini --experimental-acp`, `claude-agent-acp`, `codex-acp`, …) |
+| `ASK_AI_PERMISSION` | `allow-read` | `session/request_permission` policy: read/search/fetch allowed, everything else denied; `ask` prompts y/N on the terminal, `deny` refuses all |
+| `ASK_AI_ACP_REUSE` | unset | `1` resumes the stored session (`session/load`) for the same agent + cwd |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Cancel a turn when no answer text arrives for this many seconds |
 | `ASK_AI_ACP_VERBOSE` / `ASK_AI_ACP_TRACE` | unset | Thoughts and tool calls on stderr / JSON-RPC log file |
+| `ASK_AI_ACP` | unset | Legacy alias: `0` = `ASK_AI_HARNESS=cli` |
 
 `~/.ask_ai` is sourced by the entry script (GUI path) as well as by the shell rc (`ask` / `askr`): the desktop session does not source rc files.
 
@@ -77,7 +79,7 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 3. Launches dialog with presets on argv and file info on stdin
 4. Dialog prints query to stdout (0 = OK, 1 = Cancel); saves to `~/.config/ask-ai-dolphin.history`
 5. Opens terminal with `ask-ai-dolphin-run.sh "<query>" <files...>` (`$TERMINAL` → konsole → kgx/gnome-terminal/xterm → inline TTY). Konsole hands `-e cmd` to an already running instance, so the session never inherits the launcher's environment: the pause flag travels on the command line (`env ASK_AI_PAUSE=1 …`), and the runner reads `~/.ask_ai` itself
-6. Runner attaches readable text files via `opencode run -f …` (or, with `ASK_AI_ACP=1`, as `resource_link` blocks of an ACP `session/prompt`), streams through `glow` (unless `GLOW_DISABLED=1`). ACP mode prints only `agent_message_chunk` text, so the saved `.md`, glow and script detection still see clean Markdown
+6. Runner attaches readable text files as `resource_link` blocks of an ACP `session/prompt` and streams the answer through `glow` (unless `GLOW_DISABLED=1`); `ASK_AI_HARNESS=cli` keeps the old `opencode run -f …` path. ACP mode prints only `agent_message_chunk` text, so the saved `.md`, glow and script detection still see clean Markdown
 7. If response is a shebang script: save `.sh`, then run only per `ASK_AI_AUTO_EXEC` (default: confirm)
 
 ## Config Presets

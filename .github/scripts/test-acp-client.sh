@@ -9,7 +9,10 @@
 #   6. Agent error → exit 1; auth-required error → exit 3 with a hint
 #   7. SIGINT sends session/cancel and exits 130
 #   8. --idle-timeout cancels a silent agent instead of hanging forever
-#   9. --trace records both directions of the conversation
+#   9. --probe reports capabilities without starting a conversation
+#  10. --reuse-session stores and resumes sessions, with a new-session fallback
+#  11. --permission ask: terminal prompt, safe deny when there is no terminal
+#  12. --trace records both directions of the conversation
 
 set -euo pipefail
 
@@ -128,6 +131,20 @@ for expected in '"model": "fake/small"' '"effort": "high"' '"mode": "build"'; do
     fi
 done
 
+# Agents name modes differently: plan/build must be mapped, not rejected.
+rc=$(run_client modealias FAKE_ACP_MODES=read-only,auto -- --mode plan "Question")
+if agent_log_has '"mode": "read-only"'; then
+    pass "Mode 'plan' mapped to the agent's 'read-only'"
+else
+    fail "Mode alias not applied: $(grep config_set "$LOG_FILE" | tr '\n' ' ')"
+fi
+rc=$(run_client modealias2 FAKE_ACP_MODES=read-only,auto -- --mode build "Question")
+if agent_log_has '"mode": "auto"'; then
+    pass "Mode 'build' mapped to the agent's 'auto'"
+else
+    fail "Mode alias for build not applied"
+fi
+
 rc=$(run_client badmodel -- --model fake/nope "Question")
 if [ "$rc" -eq 0 ] && grep -q "ignored" "$TEST_DIR/err-badmodel.txt" \
     && grep -q "Hello from ACP" "$TEST_DIR/out-badmodel.txt"; then
@@ -228,7 +245,89 @@ else
 fi
 
 # ------------------------------------------------------
-print_header "9. Trace file"
+print_header "9. Probe mode"
+# ------------------------------------------------------
+rc=0
+python3 "$CLIENT" --agent "$AGENT_CMD" --cwd "$TEST_DIR" --probe \
+    >"$TEST_DIR/probe.json" 2>"$TEST_DIR/err-probe.txt" || rc=$?
+if [ "$rc" -eq 0 ] && python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["capabilities"]; assert d["configOptions"]' "$TEST_DIR/probe.json"; then
+    pass "--probe reports capabilities and config options as JSON"
+else
+    fail "Probe failed (rc=$rc): $(cat "$TEST_DIR/err-probe.txt")"
+fi
+
+# ------------------------------------------------------
+print_header "10. Session reuse"
+# ------------------------------------------------------
+STORE="$TEST_DIR/sessions.json"
+rm -f "$STORE"
+rc=$(run_client reuse1 FAKE_ACP_LOAD=1 -- --reuse-session --session-store "$STORE" "First question")
+if [ -f "$STORE" ] && agent_log_has '"new_session": true'; then
+    pass "First run creates a session and remembers it"
+else
+    fail "Session was not stored (rc=$rc)"
+fi
+rc=$(run_client reuse2 FAKE_ACP_LOAD=1 -- --reuse-session --session-store "$STORE" "Second question")
+if agent_log_has '"loaded_session": "sess_fake_1"'; then
+    pass "Second run resumes the stored session with session/load"
+else
+    fail "Session was not resumed (rc=$rc): $(head -c 200 "$LOG_FILE")"
+fi
+if grep -qF 'Hello from ACP' "$TEST_DIR/out-reuse2.txt"; then
+    pass "Resumed session still answers"
+else
+    fail "Resumed session produced no answer"
+fi
+
+rc=$(run_client reuse3 FAKE_ACP_LOAD=1 FAKE_ACP_LOAD_FAIL=1 -- --reuse-session --session-store "$STORE" "Third question")
+if agent_log_has '"new_session": true' && grep -qF 'Hello from ACP' "$TEST_DIR/out-reuse3.txt"; then
+    pass "Expired session falls back to a new one"
+else
+    fail "Expired session handling wrong (rc=$rc)"
+fi
+
+rc=$(run_client noreuse FAKE_ACP_LOAD=1 -- --session-store "$STORE" "Fourth question")
+if agent_log_has '"new_session": true' && ! agent_log_has '"loaded_session"'; then
+    pass "Without --reuse-session a fresh session is always created"
+else
+    fail "Session was reused without asking"
+fi
+
+# ------------------------------------------------------
+print_header "11. Interactive permission policy (ask)"
+# ------------------------------------------------------
+# No controlling terminal (setsid): the question cannot be asked, so the tool
+# must be denied instead of blocking or gaining rights by accident.
+: >"$LOG_FILE"
+rc=0
+setsid env FAKE_ACP_SCENARIO=permission FAKE_ACP_LOG="$LOG_FILE" \
+    python3 "$CLIENT" --agent "$AGENT_CMD" --cwd "$TEST_DIR" --permission ask "Edit something" \
+    </dev/null >"$TEST_DIR/out-ask-notty.txt" 2>"$TEST_DIR/err-ask-notty.txt" || rc=$?
+if agent_log_has '"permission_option": "deny"' \
+    && grep -q "no terminal" "$TEST_DIR/err-ask-notty.txt"; then
+    pass "Without a terminal, ask-mode denies and says why"
+else
+    fail "ask-mode without a tty misbehaved (rc=$rc): $(cat "$TEST_DIR/err-ask-notty.txt")"
+fi
+
+# With a pseudo-terminal and an explicit "y", the same tool is allowed.
+: >"$LOG_FILE"
+cat >"$TEST_DIR/ask-yes.sh" <<ASKYES
+#!/bin/bash
+FAKE_ACP_SCENARIO=permission FAKE_ACP_LOG="$LOG_FILE" \\
+    python3 "$CLIENT" --agent "$AGENT_CMD" --cwd "$TEST_DIR" --permission ask "Edit something"
+ASKYES
+chmod +x "$TEST_DIR/ask-yes.sh"
+printf 'y\n' | script -qec "bash $TEST_DIR/ask-yes.sh" /dev/null \
+    >"$TEST_DIR/out-ask-yes.txt" 2>"$TEST_DIR/err-ask-yes.txt" || true
+if agent_log_has '"permission_option": "allow"'; then
+    pass "ask-mode allows the tool after a 'y' on the terminal"
+else
+    fail "ask-mode did not accept the answer: $(cat "$TEST_DIR/err-ask-yes.txt")"
+fi
+
+# ------------------------------------------------------
+print_header "12. Trace file"
 # ------------------------------------------------------
 rc=$(run_client traced -- --trace "$TEST_DIR/trace.log" "Question")
 if grep -q '^-> {"jsonrpc"' "$TEST_DIR/trace.log" \

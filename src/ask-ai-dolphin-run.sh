@@ -240,23 +240,32 @@ PROMPT+="
 My question about them: $QUERY"
 
 # --- Harness selection ---
-# ASK_AI_ACP=1 drives any agent that speaks the Agent Client Protocol through
-# ask-ai-acp-client.py: `opencode acp`, `gemini --experimental-acp`,
-# `claude-code-acp`, `codex-acp`, … (ASK_AI_AGENT_CMD overrides the command).
-# Opt-in during phase 0: the opencode CLI path below stays the default until
-# the ACP client covers every documented behaviour on real agents.
+# ACP is the default: it drives any agent that speaks the Agent Client Protocol
+# (`opencode acp`, `gemini --experimental-acp`, `claude-agent-acp`,
+# `codex-acp`, …) and ASK_AI_AGENT_CMD overrides the command.
+#   ASK_AI_HARNESS=cli        legacy `opencode run` path
+#   ASK_AI_HARNESS=acp        force ACP (the default)
+#   ASK_AI_ACP=0 / =1         pre-1.4 alias for the two values above
 ACP_MODE=0
 ACP_CLIENT="$INSTALL_DIR/ask-ai-acp-client.py"
 [ -f "$ACP_CLIENT" ] || ACP_CLIENT="$(dirname "$INSTALL_DIR")/src/ask-ai-acp-client.py"
-case "${ASK_AI_ACP:-0}" in
-    1|yes|true|on)
-        if [ -f "$ACP_CLIENT" ] && command -v python3 &>/dev/null; then
-            ACP_MODE=1
-        else
-            echo -e "${BOLD}${LABEL_YELLOW}${LBL_ACP_UNAVAILABLE}${NC}"
-        fi
+WANT_ACP=1
+case "${ASK_AI_HARNESS:-}" in
+    cli|opencode|legacy) WANT_ACP=0 ;;
+    acp) WANT_ACP=1 ;;
+    "")
+        case "${ASK_AI_ACP:-}" in
+            0|no|false|off) WANT_ACP=0 ;;
+        esac
         ;;
 esac
+if [ "$WANT_ACP" -eq 1 ]; then
+    if [ -f "$ACP_CLIENT" ] && command -v python3 &>/dev/null; then
+        ACP_MODE=1
+    else
+        echo -e "${BOLD}${LABEL_YELLOW}${LBL_ACP_UNAVAILABLE}${NC}"
+    fi
+fi
 
 # --- Check opencode (v2 required, CLI path only) ---
 # The GUI session PATH may resolve `opencode` to a system v1 build; v1 breaks
@@ -394,6 +403,9 @@ run_agent() {
         fi
         if [ "${ASK_AI_ACP_VERBOSE:-0}" = "1" ]; then
             ACP_ARGS+=(--verbose)
+        fi
+        if [ "${ASK_AI_ACP_REUSE:-0}" = "1" ]; then
+            ACP_ARGS+=(--reuse-session)
         fi
         python3 "${ACP_ARGS[@]}" "$QUERY" "${ATTACHED_NAMES[@]}"
     else

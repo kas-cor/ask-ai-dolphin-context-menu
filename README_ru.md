@@ -146,12 +146,14 @@ nano ~/.ask_ai
 | `ASK_AI_LOCALE` | авто (`$LANG`) | Язык: `ru_RU` / `en_EN` |
 | `ASK_AI_THEME` | авто (палитра) | Тема: `dark` / `light` |
 | `TERMINAL` | пусто | Предпочитаемый терминал (приоритет над konsole) |
-| `ASK_AI_ACP` | пусто | `1` — работать через любой [ACP](https://agentclientprotocol.com)-агент вместо opencode CLI (экспериментально) |
-| `ASK_AI_AGENT_CMD` | `opencode acp` | Команда ACP-агента: `gemini --experimental-acp`, `claude-code-acp`, `codex-acp`, … |
-| `ASK_AI_PERMISSION` | `allow-read` | Политика разрешений ACP: `allow-read` (только чтение/поиск/загрузка) или `deny` |
+| `ASK_AI_HARNESS` | `acp` | `acp` — любой [ACP](https://agentclientprotocol.com)-агент; `cli` — прежний путь `opencode run` |
+| `ASK_AI_AGENT_CMD` | `opencode acp` | Команда ACP-агента: `gemini --experimental-acp`, `claude-agent-acp`, `codex-acp`, … |
+| `ASK_AI_PERMISSION` | `allow-read` | Политика разрешений ACP: `allow-read` (только чтение/поиск/загрузка), `ask` (y/N в терминале для инструментов, меняющих файлы), `deny` |
+| `ASK_AI_ACP_REUSE` | пусто | `1` — продолжать прошлую сессию для того же агента и каталога (`session/load`) |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Отменить ход, если текст ответа не приходит столько секунд |
 | `ASK_AI_ACP_VERBOSE` | пусто | `1` — мысли и вызовы инструментов агента в stderr |
 | `ASK_AI_ACP_TRACE` | пусто | Писать JSON-RPC обмен в файл |
+| `ASK_AI_ACP` | пусто | Старый алиас: `0` выбирает путь CLI (то же, что `ASK_AI_HARNESS=cli`) |
 
 Файл `~/.ask_ai` читается и функциями `ask`/`askr`, и непосредственно пунктом меню Dolphin, и раннером в терминале — сессия рабочего стола не загружает ваш shell-rc, а Konsole передаёт команду уже открытому окну, не передавая ему переменные окружения вызывающего процесса, поэтому иначе эти настройки игнорировались бы.
 
@@ -170,14 +172,14 @@ export ASK_AI_THEME="dark"
 
 Подробнее о языке в разделе [Локализация](#локализация). Тема определяется из схемы KDE и работает для диалога и заголовка раннера.
 
-### ACP-харнессы (экспериментально)
+### ACP-харнессы
 
-По умолчанию раннер работает с `opencode` через его CLI. С ACP (Agent Client Protocol) можно подключать любой харнесс, который поддерживает протокол — `opencode acp`, Gemini CLI, Claude Code, Codex, Qwen, Goose и другие:
+Запросы идут через ACP (Agent Client Protocol), поэтому подходит любой харнесс, который его поддерживает: по умолчанию `opencode acp`, а Gemini CLI, Claude Code, Codex, Qwen, Goose подключаются одной переменной:
 
 ```bash
-export ASK_AI_ACP=1                                   # включить ACP-путь
-export ASK_AI_AGENT_CMD="gemini --experimental-acp"   # или claude-code-acp, codex-acp, …
-export ASK_AI_PERMISSION="allow-read"                 # инструменты чтения разрешены
+export ASK_AI_AGENT_CMD="gemini --experimental-acp"   # или claude-agent-acp, codex-acp, …
+export ASK_AI_PERMISSION="ask"                        # y/N перед инструментами, меняющими файлы
+export ASK_AI_HARNESS="cli"                           # прежний путь `opencode run`
 ```
 
 Что во что отображается:
@@ -190,9 +192,15 @@ export ASK_AI_PERMISSION="allow-read"                 # инструменты �
 | выбранные файлы | блоки `resource_link` с абсолютными `file://` URI |
 | `ASK_AI_SAVE_DIR`, `ASK_AI_CLIPBOARD`, `ASK_AI_AUTO_EXEC` | без изменений — работают по потоковому Markdown |
 
-В stdout идёт только текст ответа, поэтому glow, сохранённый `.md` и поиск скриптов видят чистый Markdown; мысли и вызовы инструментов — в stderr (см. `ASK_AI_ACP_VERBOSE`). Неподдерживаемые опции пропускаются с предупреждением и не ломают запрос. Если агенту нужна авторизация, раннер сообщит и завершится с кодом 3 — выполните команду входа в терминале и повторите.
+В stdout идёт только текст ответа, поэтому glow, сохранённый `.md` и поиск скриптов видят чистый Markdown; мысли и вызовы инструментов — в stderr (см. `ASK_AI_ACP_VERBOSE`). Неподдерживаемые опции пропускаются с предупреждением и не ломают запрос. С `ASK_AI_PERMISSION=ask` раннер спросит `y/N` в окне, прежде чем инструмент изменит файлы (инструменты чтения разрешены всегда); без терминала ответ — `no`. `ASK_AI_ACP_REUSE=1` продолжает прошлую беседу в том же каталоге. Если агенту нужна авторизация, раннер сообщит и завершится с кодом 3 — выполните команду входа в терминале и повторите.
 
-Диагностика: `ASK_AI_ACP_TRACE=/tmp/acp.log` записывает весь JSON-RPC обмен.
+Диагностика: `ASK_AI_ACP_TRACE=/tmp/acp.log` записывает весь JSON-RPC обмен, а
+
+```bash
+python3 ~/.local/bin/ask-ai-acp-client.py --agent "gemini --experimental-acp" --probe
+```
+
+показывает, что агент объявляет (capabilities, методы авторизации, опции модели/усилия/режима), ничего не спрашивая.
 
 ### Функции `ask` / `askr` (терминал)
 

@@ -284,6 +284,15 @@ STYLE_DARK = build_style(True)
 
 
 # --- Locale ---
+def _harness_is_acp():
+    """Mirror the runner's harness selection (runner: WANT_ACP default 1)."""
+    declared = os.environ.get("ASK_AI_HARNESS", "").strip().lower()
+    if declared:
+        return declared not in ("cli", "opencode", "legacy")
+    legacy = os.environ.get("ASK_AI_ACP", "").strip().lower()
+    return legacy not in ("0", "no", "false", "off")
+
+
 def detect_locale():
     """Detect locale: ASK_AI_LOCALE env → $LANG → en_EN.
 
@@ -449,7 +458,14 @@ class AskDialog(QDialog):
         title.setSizePolicy(_size_policy("Expanding", "Preferred"))
         hdr_layout.addWidget(title)
 
-        model = os.environ.get("ASK_AI_MODEL", "opencode/mimo-v2.6-flash-free")
+        # ACP is the default harness, and there the model is whatever the agent
+        # is configured with unless ASK_AI_MODEL says otherwise; the opencode
+        # CLI default would be misleading in that header.
+        model = os.environ.get("ASK_AI_MODEL") or (
+            _("dialog_model_default", "agent default")
+            if _harness_is_acp()
+            else "opencode/mimo-v2.6-flash-free"
+        )
         meta_parts = [f"{model_label} {model}"]
         if os.environ.get("ASK_AI_EFFORT"):
             meta_parts.append(f"effort={os.environ['ASK_AI_EFFORT']}")

@@ -17,7 +17,7 @@
 #  14. opencode v2 resolver (v1 in PATH must be skipped)
 #  15. Failure handling: no .md on error, bad limits, "-" paths, pause mode
 #  16. ~/.ask_ai reaches the runner when Konsole drops the launcher's env
-#  17. ACP harness: ASK_AI_ACP=1 drives an agent without the opencode CLI
+#  17. ACP harness: default path drives an agent without the opencode CLI
 
 set -euo pipefail
 
@@ -484,7 +484,10 @@ printf 'print("hi")\n' > "$TEST_DIR/attach-sample.py"
 run_fake_runner() {  # $1 = canned response file, $2 = label, [$3 = file to attach]
     local file="${3:-$TEST_DIR/attach-sample.py}"
     rm -f "$FAKE_SAVE_DIR"/*
+    # ASK_AI_HARNESS=cli keeps these cases on the legacy `opencode run` path;
+    # the ACP path has its own section at the end.
     FAKE_RESPONSE="$1" PATH="$SHIM_DIR:$PATH" ASK_AI_LOCALE=en_EN HOME="$FAKE_HOME" \
+        ASK_AI_HARNESS=cli \
         GLOW_DISABLED=1 ASK_AI_AUTO_EXEC=0 ASK_AI_SAVE_DIR="$FAKE_SAVE_DIR" \
         bash "$RUNNER_FILE" "test query" "$file" \
         </dev/null >"$TEST_DIR/fake-run-$2.log" 2>&1
@@ -724,8 +727,10 @@ export ASK_AI_MODEL="opencode/model-from-file"
 export ASK_AI_SAVE_DIR="$FILE_SAVE_DIR"
 EOF
 
+# ASK_AI_HARNESS is not inherited by `env -i`, so the CLI default applies;
+# keep these cases on the CLI path explicitly.
 CLEAN_ENV=(env -i HOME="$FAKE_HOME" PATH="$SHIM_DIR:/usr/bin:/bin"
-    FAKE_RESPONSE="$TEST_DIR/resp-ok.txt" GLOW_DISABLED=1
+    ASK_AI_HARNESS=cli FAKE_RESPONSE="$TEST_DIR/resp-ok.txt" GLOW_DISABLED=1
     ASK_AI_LOCALE=en_EN ASK_AI_AUTO_EXEC=0)
 
 # --- 16a. Model from ~/.ask_ai is used with no ASK_AI_MODEL in the env
@@ -775,7 +780,7 @@ else
 fi
 
 # --------------------------------
-print_header "17. ACP harness (ASK_AI_ACP=1)"
+print_header "17. ACP harness is the default"
 # --------------------------------
 # The runner must be able to drive any ACP agent: no opencode in PATH (the ACP
 # path never checks for it), a fake agent that speaks the protocol, and the
@@ -784,7 +789,9 @@ ACP_LOG="$TEST_DIR/acp-agent.log"
 : >"$ACP_LOG"
 rm -f "$FAKE_SAVE_DIR"/*
 # -u ASK_AI_MODEL: a developer's own export must not hide the default handling.
-env -u ASK_AI_MODEL ASK_AI_ACP=1 \
+# ASK_AI_ACP / ASK_AI_HARNESS are deliberately unset: the ACP path must be the
+# one taken when nothing asks for a specific harness.
+env -u ASK_AI_MODEL -u ASK_AI_ACP -u ASK_AI_HARNESS \
     ASK_AI_AGENT_CMD="python3 $SCRIPT_DIR/fake-acp-agent.py" \
     FAKE_ACP_LOG="$ACP_LOG" \
     PATH="/usr/bin:/bin" HOME="$FAKE_HOME" GLOW_DISABLED=1 ASK_AI_LOCALE=en_EN \
@@ -822,6 +829,36 @@ if grep -qF 'opencode v2 not found' "$TEST_DIR/fake-run-acp.log"; then
     fail "ACP mode still required the opencode CLI"
 else
     pass "ACP mode works without the opencode CLI"
+fi
+
+# --- Escape hatch: ASK_AI_HARNESS=cli and the old ASK_AI_ACP=0 keep the CLI
+run_cli_harness() {
+    local label="$1"
+    shift
+    rm -f "$FAKE_SAVE_DIR"/*
+    env -u ASK_AI_MODEL "$@" FAKE_RESPONSE="$TEST_DIR/resp-ok.txt" \
+        PATH="$SHIM_DIR:/usr/bin:/bin" HOME="$FAKE_HOME" GLOW_DISABLED=1 \
+        ASK_AI_LOCALE=en_EN ASK_AI_AUTO_EXEC=0 ASK_AI_SAVE_DIR="$FAKE_SAVE_DIR" \
+        bash "$RUNNER_FILE" "cli query" "$TEST_DIR/attach-sample.py" \
+        </dev/null >"$TEST_DIR/fake-run-$label.log" 2>&1
+}
+run_cli_harness harness-cli -u ASK_AI_ACP ASK_AI_HARNESS=cli
+if grep -qF 'Harness:' "$TEST_DIR/fake-run-harness-cli.log"; then
+    fail "ASK_AI_HARNESS=cli still used ACP"
+else
+    pass "ASK_AI_HARNESS=cli keeps the opencode CLI path"
+fi
+if grep -qF 'opencode/mimo-v2.6-flash-free' "$TEST_DIR/fake-run-harness-cli.log"; then
+    pass "CLI path keeps the documented default model"
+else
+    fail "CLI path lost its default model"
+fi
+
+run_cli_harness acp-alias -u ASK_AI_HARNESS ASK_AI_ACP=0
+if grep -qF 'Harness:' "$TEST_DIR/fake-run-acp-alias.log"; then
+    fail "ASK_AI_ACP=0 still used ACP"
+else
+    pass "ASK_AI_ACP=0 (pre-1.4 alias) still selects the CLI path"
 fi
 
 # --------------------------------

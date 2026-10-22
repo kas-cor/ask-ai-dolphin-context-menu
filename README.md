@@ -146,12 +146,14 @@ nano ~/.ask_ai
 | `ASK_AI_LOCALE` | auto-detect (system `$LANG`) | Force UI language: `ru_RU` / `en_EN` |
 | `ASK_AI_THEME` | auto-detect (system palette) | Force UI theme: `dark` / `light` |
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
-| `ASK_AI_ACP` | unset | Set `1` to drive any [ACP](https://agentclientprotocol.com) agent instead of the opencode CLI (experimental) |
-| `ASK_AI_AGENT_CMD` | `opencode acp` | ACP agent command line, e.g. `gemini --experimental-acp`, `claude-code-acp`, `codex-acp` |
-| `ASK_AI_PERMISSION` | `allow-read` | ACP permission policy: `allow-read` (read/search/fetch only) or `deny` |
+| `ASK_AI_HARNESS` | `acp` | `acp` drives any [ACP](https://agentclientprotocol.com) agent; `cli` uses the legacy `opencode run` path |
+| `ASK_AI_AGENT_CMD` | `opencode acp` | ACP agent command line, e.g. `gemini --experimental-acp`, `claude-agent-acp`, `codex-acp` |
+| `ASK_AI_PERMISSION` | `allow-read` | ACP tool permission policy: `allow-read` (read/search/fetch only), `ask` (y/N in the terminal for anything that changes files), `deny` |
+| `ASK_AI_ACP_REUSE` | unset | `1` resumes the previous session for the same agent and directory (`session/load`) |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Cancel the turn when no answer text arrives for this many seconds |
 | `ASK_AI_ACP_VERBOSE` | unset | `1` prints agent thoughts and tool calls on stderr |
 | `ASK_AI_ACP_TRACE` | unset | Log JSON-RPC traffic to this file |
+| `ASK_AI_ACP` | unset | Legacy alias: `0` selects the CLI path (same as `ASK_AI_HARNESS=cli`) |
 
 `~/.ask_ai` is read both by the `ask`/`askr` shell functions and, directly, by the Dolphin menu entry and the terminal runner — the desktop session does not source your shell rc, and Konsole hands the command to an already running window without passing the launcher's environment, so both scripts would otherwise ignore these settings.
 
@@ -170,14 +172,14 @@ export ASK_AI_THEME="dark"      # force dark theme
 
 See [Localization](#localization) for locale details. The theme auto-detects from your KDE color scheme and works for both the dialog and the runner header.
 
-### ACP harnesses (experimental)
+### ACP harnesses
 
-The runner talks to `opencode` through its CLI by default. With ACP (Agent Client Protocol) it can drive any harness that speaks the protocol — `opencode acp`, Gemini CLI, Claude Code, Codex, Qwen, Goose and others:
+Queries go through ACP (Agent Client Protocol), so any harness that speaks it works out of the box — `opencode acp` is the default, and Gemini CLI, Claude Code, Codex, Qwen, Goose and others plug in with one variable:
 
 ```bash
-export ASK_AI_ACP=1                              # enable the ACP path
-export ASK_AI_AGENT_CMD="gemini --experimental-acp"   # or claude-code-acp, codex-acp, …
-export ASK_AI_PERMISSION="allow-read"             # read-only tools auto-approved
+export ASK_AI_AGENT_CMD="gemini --experimental-acp"   # or claude-agent-acp, codex-acp, …
+export ASK_AI_PERMISSION="ask"                        # y/N before tools that change files
+export ASK_AI_HARNESS="cli"                           # legacy `opencode run` path
 ```
 
 What maps onto what:
@@ -190,9 +192,15 @@ What maps onto what:
 | selected files | `resource_link` content blocks with absolute `file://` URIs |
 | `ASK_AI_SAVE_DIR`, `ASK_AI_CLIPBOARD`, `ASK_AI_AUTO_EXEC` | unchanged — they work on the streamed Markdown |
 
-Only the agent's answer text is printed, so glow, the saved `.md` and the script detection see clean Markdown; thoughts and tool calls go to stderr (see `ASK_AI_ACP_VERBOSE`). Unsupported options are reported and skipped instead of failing the query. If the agent needs a login, the runner tells you so and exits with code 3 — run the agent's login command in a terminal, then retry.
+Only the agent's answer text is printed, so glow, the saved `.md` and the script detection see clean Markdown; thoughts and tool calls go to stderr (see `ASK_AI_ACP_VERBOSE`). Unsupported options are reported and skipped instead of failing the query. With `ASK_AI_PERMISSION=ask` the runner asks `y/N` in the window before a tool may modify files (read-only tools are always allowed); without a terminal the answer is `no`. `ASK_AI_ACP_REUSE=1` continues the previous conversation in the same directory instead of starting over. If the agent needs a login, the runner tells you so and exits with code 3 — run the agent's login command in a terminal, then retry.
 
-Diagnostics: `ASK_AI_ACP_TRACE=/tmp/acp.log` records every JSON-RPC message.
+Diagnostics: `ASK_AI_ACP_TRACE=/tmp/acp.log` records every JSON-RPC message, and
+
+```bash
+python3 ~/.local/bin/ask-ai-acp-client.py --agent "gemini --experimental-acp" --probe
+```
+
+prints what an agent advertises (capabilities, auth methods, model/effort/mode options) without asking anything.
 
 ### `ask` / `askr` terminal functions
 

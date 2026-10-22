@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- **Experimental ACP harness support** — `ASK_AI_ACP=1` runs the query through `ask-ai-acp-client.py` and any agent that speaks the Agent Client Protocol (`opencode acp`, `gemini --experimental-acp`, `claude-code-acp`, `codex-acp`, …): model / effort / mode map onto the agent's own config options, selected files become `resource_link` blocks, tool permissions are denied by default except reads, and only the answer text reaches stdout so glow, `.md` saving and script detection keep working. `ASK_AI_AGENT_CMD`, `ASK_AI_PERMISSION`, `ASK_AI_ACP_VERBOSE`, `ASK_AI_ACP_TRACE` and `ASK_AI_ACP_IDLE_TIMEOUT` tune it; the opencode CLI path stays the default
+- **ACP is the default harness** — queries run through `ask-ai-acp-client.py` and any agent that speaks the Agent Client Protocol (`opencode acp` by default, `gemini --experimental-acp`, `claude-agent-acp`, `codex-acp`, …): model / effort / mode map onto the agent's own config options, selected files become `resource_link` blocks, tool permissions are denied by default except reads, and only the answer text reaches stdout so glow, `.md` saving and script detection keep working. `ASK_AI_AGENT_CMD`, `ASK_AI_PERMISSION` (`allow-read` / `ask` / `deny`), `ASK_AI_ACP_REUSE` (resume the previous session), `ASK_AI_ACP_VERBOSE`, `ASK_AI_ACP_TRACE` and `ASK_AI_ACP_IDLE_TIMEOUT` tune it; `ASK_AI_HARNESS=cli` (or the legacy `ASK_AI_ACP=0`) keeps the old `opencode run` path, and `--probe` prints what an agent advertises
 
 ### Bug Fixes
 
