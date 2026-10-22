@@ -62,13 +62,15 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 | `ASK_AI_THEME` | auto (palette / COLORFGBG) | Force UI theme: `dark` / `light` |
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
 
+`~/.ask_ai` is sourced by the entry script (GUI path) as well as by the shell rc (`ask` / `askr`): the desktop session does not source rc files.
+
 ## Data Flow
 
 1. Dolphin calls `ask-ai-dolphin.sh %F` with selected file paths
 2. Entry script sources `ask-ai-common.sh`, loads locale, reads presets from `~/.config/ask-ai-dolphin.cfg` (locale-aware built-in fallbacks if missing)
 3. Launches dialog with presets on argv and file info on stdin
 4. Dialog prints query to stdout (0 = OK, 1 = Cancel); saves to `~/.config/ask-ai-dolphin.history`
-5. Opens terminal with `ask-ai-dolphin-run.sh "<query>" <files...>` (`$TERMINAL` → konsole → kgx/gnome-terminal/xterm → inline TTY)
+5. Opens terminal with `ask-ai-dolphin-run.sh "<query>" <files...>` (`$TERMINAL` → konsole → kgx/gnome-terminal/xterm → inline TTY). Konsole hands `-e cmd` to an already running instance, so the session never inherits the launcher's environment: the pause flag travels on the command line (`env ASK_AI_PAUSE=1 …`), and the runner reads `~/.ask_ai` itself
 6. Runner attaches readable text files via `opencode run -f …`, streams through `glow` (unless `GLOW_DISABLED=1`)
 7. If response is a shebang script: save `.sh`, then run only per `ASK_AI_AUTO_EXEC` (default: confirm)
 
@@ -113,6 +115,10 @@ Located in `.github/scripts/`, run via `.github/workflows/ci.yml`.
 | `validate-locales.py` | Locale format, UTF-8, key parity |
 | `test-qt-compat.py` | `setFamilies()` fallback for Qt &lt; 5.13 |
 | `test-ask-theme.py` | `ASK_AI_THEME` + STYLE_DARK ≠ STYLE_LIGHT |
-| `test-runner-save.sh` | Shebang, slug, AUTO_EXEC matrix, common.sh, attach limits |
+| `test-common-helpers.sh` | Locale detection, text-file detection, sizes, dir listing |
+| `test-dialog-i18n.py` | Dialog locale forms + history round-trip |
+| `test-entry-dialog.sh` | Dialog cancel/crash handling, terminal launch, `~/.ask_ai` |
+| `test-install.sh` | Installer e2e in a sandboxed HOME (locale arg, layout, `.desktop`) |
+| `test-runner-save.sh` | Shebang, slug, AUTO_EXEC matrix, common.sh, attach limits, failure paths |
 
-CI pipeline: Shell syntax → Python syntax → Locale validation → PyQt5 → Qt compat → ASK_AI_THEME → Runner tests.
+CI pipeline: Shell syntax → ShellCheck → Python syntax → Locale validation → PyQt5 → Qt compat → ASK_AI_THEME → Common helpers → Dialog locale/history → Entry point → Installer → Runner tests.

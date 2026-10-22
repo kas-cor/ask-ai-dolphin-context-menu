@@ -66,15 +66,16 @@ askr "Вывод без glow"
 
 ## Зависимости
 
-- **KDE Plasma** (Dolphin, Konsole, kdialog)
+- **KDE Plasma** (Dolphin, Konsole)
 - **Python 3 + PyQt5**
-- **[opencode](https://opencode.ai)** — CLI для AI-моделей
+- **[opencode](https://opencode.ai)** v2 — CLI для AI-моделей
 - **glow** (опционально) — форматированный вывод Markdown
+- **file** (опционально) — определение текстовых файлов для вложений по MIME (без него проверяется NUL-байт)
 
 ### Установка зависимостей (Arch Linux)
 
 ```bash
-sudo pacman -S python-pyqt5 kdialog konsole
+sudo pacman -S python-pyqt5 konsole
 yay -S glow-bin  # или sudo pacman -S glow, если есть в репозиториях
 # opencode v2 — установка:
 curl -fsSL https://opencode.ai/v2/install | bash
@@ -145,6 +146,8 @@ nano ~/.ask_ai
 | `ASK_AI_LOCALE` | авто (`$LANG`) | Язык: `ru_RU` / `en_EN` |
 | `ASK_AI_THEME` | авто (палитра) | Тема: `dark` / `light` |
 | `TERMINAL` | пусто | Предпочитаемый терминал (приоритет над konsole) |
+
+Файл `~/.ask_ai` читается и функциями `ask`/`askr`, и непосредственно пунктом меню Dolphin, и раннером в терминале — сессия рабочего стола не загружает ваш shell-rc, а Konsole передаёт команду уже открытому окну, не передавая ему переменные окружения вызывающего процесса, поэтому иначе эти настройки игнорировались бы.
 
 **Примеры:**
 
@@ -269,15 +272,21 @@ cp locales/en_EN locales/de_DE
 ```
 ask-ai-dolphin-context-menu/
 ├── src/
+│   ├── ask-ai-common.sh           # Общие помощники (локаль, проверка файлов)
 │   ├── ask-ai-dolphin.sh          # Входная точка — PyQt5 диалог + Konsole
 │   ├── ask-ai-dolphin-run.sh      # Раннер: стриминг opencode через glow
 │   └── ask-ai-dolphin-dialog.py   # PyQt5 диалог с пресетами и полем ввода
 ├── servicemenu/
 │   └── ask-ai-dolphin.desktop     # Сервис-меню для Dolphin
 ├── config/
-│   └── ask-ai-dolphin.cfg.example # Пример конфига с пресетами
+│   ├── ask-ai-dolphin.cfg.example         # Пример конфига (EN)
+│   └── ask-ai-dolphin.cfg.ru_RU.example   # Пример конфига (RU)
 ├── dot-ask_ai/
 │   └── dot-ask_ai.example      # Пример ~/.ask_ai
+├── locales/
+│   ├── en_EN                   # Английские строки
+│   └── ru_RU                   # Русские строки
+├── .github/                    # CI: workflows и тесты
 ├── install.sh                  # Скрипт установки (работает и через curl)
 ├── uninstall.sh                # Скрипт удаления (работает и через curl)
 ├── AGENTS.md                   # Описание для AI-агентов

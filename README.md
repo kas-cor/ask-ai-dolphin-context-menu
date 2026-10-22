@@ -68,8 +68,9 @@ askr "Raw output without glow"
 
 - **KDE Plasma** (Dolphin, Konsole)
 - **Python 3 + PyQt5**
-- **[opencode](https://opencode.ai)** — CLI for AI models
+- **[opencode](https://opencode.ai)** v2 — CLI for AI models
 - **glow** (optional) — formatted Markdown output
+- **file** (optional) — MIME-based detection of attachable text files (a NUL-byte check is used without it)
 
 ### Installing dependencies (Arch Linux)
 
@@ -145,6 +146,8 @@ nano ~/.ask_ai
 | `ASK_AI_LOCALE` | auto-detect (system `$LANG`) | Force UI language: `ru_RU` / `en_EN` |
 | `ASK_AI_THEME` | auto-detect (system palette) | Force UI theme: `dark` / `light` |
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
+
+`~/.ask_ai` is read both by the `ask`/`askr` shell functions and, directly, by the Dolphin menu entry and the terminal runner — the desktop session does not source your shell rc, and Konsole hands the command to an already running window without passing the launcher's environment, so both scripts would otherwise ignore these settings.
 
 **Examples:**
 
@@ -274,7 +277,8 @@ ask-ai-dolphin-context-menu/
 ├── servicemenu/
 │   └── ask-ai-dolphin.desktop     # Dolphin service menu file
 ├── config/
-│   └── ask-ai-dolphin.cfg.example # Example presets config
+│   ├── ask-ai-dolphin.cfg.example        # Example presets (EN)
+│   └── ask-ai-dolphin.cfg.ru_RU.example  # Example presets (RU)
 ├── dot-ask_ai/
 │   └── dot-ask_ai.example         # Example ~/.ask_ai file
 ├── locales/                       # en_EN, ru_RU

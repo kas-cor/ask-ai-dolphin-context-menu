@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Bug Fixes
+
+- `ASK_AI_LOCALE=ru_RU` / `en_EN` is honoured again — the value was lower-cased and then compared against mixed case, so the documented full forms fell through to `$LANG`
+- `./install.sh ru_RU` installs the Russian UI (the argument was lower-cased before matching `ru_RU`)
+- Cancelling the dialog exits with 0 instead of aborting the entry script under `set -e`; a crashed dialog now reports its log path
+- Without `file(1)`, text files are detected again instead of every file being treated as binary
+- `~/.ask_ai` is read on the Dolphin path — by the entry script and by the runner — so model / mode / locale / save-dir settings apply to the menu, not only to `ask` / `askr` (Konsole does not pass the launcher's environment to an already running window; values already present in the environment still win)
+- A multi-line query is stored as a single history entry; the history file is written atomically
+- `$TERMINAL` may carry arguments (`konsole --hold`), and a failing runner no longer opens a second terminal window
+- A failed `opencode` run no longer leaves a partial `.md` in `ASK_AI_SAVE_DIR`
+- The Dolphin window still waits for Enter — the pause flag is now passed on the terminal command line, because Konsole hands the request to an already running instance and never inherits the launcher's environment (`ask` / `askr` still return to the prompt immediately)
+- Non-numeric `ASK_AI_MAX_ATTACH_*` values fall back to the defaults instead of silently dropping attachments
+- Paths starting with `-` are no longer passed to `opencode -f` as flags; CRLF preset configs are parsed correctly
+- The model catalog for `ASK_AI_EFFORT` is cached for a day instead of being fetched on every query
+- The installer no longer keeps a second copy of the locale strings (it had already drifted), copies every shipped locale, escapes `$HOME` in the generated `.desktop`, and warns about `opencode` v1
+
 ## [1.2.1](https://github.com/kas-cor/ask-ai-dolphin-context-menu/compare/v1.2.0...v1.2.1) (2026-10-12)
 
 
@@ -24,32 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * add ASK_AI_SAVE_DIR and auto-executable scripts ([a09fa0e](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/a09fa0eb8a6a2b780c706fe83cf077c2cc93bf8f))
 * add file attachments, query history, terminal fallback, and safe script handling ([b2d32a2](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/b2d32a2b5a3665a27d21da49301692e3ab62c96a))
 * initial release v1.0.0 ([14b09b5](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/14b09b5e6c08db17087477096061037fc5e622fa))
-
-## [Unreleased]
-
-### Security
-
-- **Script auto-execution is no longer automatic by default** — shebang responses are saved as `.sh`, then you are prompted `Run this script? [y/N]`. Use `ASK_AI_AUTO_EXEC=1` to always run, or `0`/`never` to never run.
-
-### Features
-
-- **File attachments** — selected text files are passed to `opencode run -f` (limits: `ASK_AI_MAX_ATTACH_BYTES`, `ASK_AI_MAX_ATTACH_FILES`); directories get a short listing in the prompt
-- **Multi-line query input** and **recent query history** (`~/.config/ask-ai-dolphin.history`)
-- **Model / effort / mode** shown in the dialog header
-- **Terminal fallback** — `$TERMINAL` → konsole → kgx / gnome-terminal / xterm → current TTY
-- **Optional clipboard copy** via `ASK_AI_CLIPBOARD=1` (wl-copy / xclip / xsel)
-- **PyQt6 fallback** if PyQt5 is not installed
-- **Shared `ask-ai-common.sh`** for locale detection and helpers
-- **Locale-aware built-in presets** when config is missing (EN/RU)
-- **Installer** prefers `$SHELL` rc file; notes for fish; hints when `~/.ask_ai` already exists
-- **Uninstaller** removes `ask-ai-common.sh` and installed locale files
-
-### Fixes
-
-- Report `opencode` failures (`pipefail` + status message)
-- Dynamic-width runner header for long localized titles
-- Avoid `echo -e` on file paths; safer `printf` in installer
-- Rename install path vs script-output dir (`INSTALL_DIR` / `SCRIPT_OUT_DIR`)
 
 ## [1.1.0] — 2026-06-08
 

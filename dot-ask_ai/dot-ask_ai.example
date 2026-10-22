@@ -68,7 +68,12 @@ export ASK_AI_MODEL="opencode/mimo-v2.6-flash-free"
 # This script adds the current directory (PWD) as file context for the AI.
 # Requires prior installation: ./install.sh (see README.md)
 #
-# Enable by adding to your shell config:
+# The Dolphin context menu and the terminal runner read this file directly,
+# so everything above applies to the right-click menu as well (the desktop
+# session does not source your shell rc, and Konsole does not pass the
+# launcher's environment to an already running window).
+#
+# Enable the shell functions by adding to your shell config:
 #   echo 'source ~/.ask_ai' >> ~/.bashrc   # or ~/.zshrc
 ask() {
   ~/.local/bin/ask-ai-dolphin-run.sh "$*"
