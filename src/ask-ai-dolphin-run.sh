@@ -31,6 +31,28 @@ elif [ -f "$(dirname "$INSTALL_DIR")/src/ask-ai-common.sh" ]; then
     source "$(dirname "$INSTALL_DIR")/src/ask-ai-common.sh"
 fi
 
+# --- User config ---
+# Konsole hands `-e cmd` to an already running instance, so a session started
+# from the service menu inherits *that* process's environment, not the one the
+# entry script exported. Without this, ASK_AI_MODEL / ASK_AI_SAVE_DIR / locale
+# settings from ~/.ask_ai silently fell back to the defaults on the Dolphin
+# path while the dialog showed the configured ones. The file is read in a
+# subshell, so its functions and any output stay out of the runner, and only
+# values that are not already in the environment are taken: an explicit
+# `ASK_AI_MODEL=… ask "…"` still wins over the file.
+if [ -f "$HOME/.ask_ai" ]; then
+    while IFS='=' read -r _cfg_key _cfg_val; do
+        case "$_cfg_key" in
+            ASK_AI_*|GLOW_DISABLED) ;;
+            *) continue ;;
+        esac
+        [ -n "${!_cfg_key+set}" ] && continue
+        printf -v "$_cfg_key" '%s' "$_cfg_val"
+        # shellcheck disable=SC2163  # the variable name itself is dynamic
+        export "$_cfg_key"
+    done < <(bash -c 'set -a; . "$HOME/.ask_ai" >/dev/null 2>&1; exec env' 2>/dev/null)
+fi
+
 # --- Locale ---
 if declare -F ask_ai_detect_locale &>/dev/null; then
     LOCALE=$(ask_ai_detect_locale)
@@ -38,8 +60,15 @@ if declare -F ask_ai_detect_locale &>/dev/null; then
 else
     # Fallback if common.sh missing (partial install)
     LOCALE="en_EN"
-    case "${ASK_AI_LOCALE:-}" in ru_RU|ru) LOCALE="ru_RU" ;; esac
+    _lc="${ASK_AI_LOCALE:-}"
+    _lc="${_lc,,}"
+    _lc="${_lc//-/_}"
+    case "$_lc" in
+        ru|ru_ru) LOCALE="ru_RU" ;;
+        en|en_en) LOCALE="en_EN" ;;
+    esac
     case "${LANG:-}" in ru_RU*|ru_UA*|be_BY*|uk_UA*) LOCALE="ru_RU" ;; esac
+    # shellcheck disable=SC1090
     [ -f "$INSTALL_DIR/locales/$LOCALE" ] && source "$INSTALL_DIR/locales/$LOCALE"
 fi
 
@@ -68,11 +97,17 @@ LBL_OPENCODE_FAILED="${runner_lbl_opencode_failed:-opencode exited with an error
 LBL_ATTACHED="${runner_lbl_attached:-Attached files:}"
 LBL_SKIPPED_ATTACH="${runner_lbl_skipped_attach:-Skipped (binary/large/dir):}"
 LBL_CLIPBOARD="${runner_lbl_clipboard:-Copied response to clipboard.}"
+LBL_DONE_INLINE="${runner_lbl_done_inline:-✅ Done.}"
 FALLBACK_QUERY="${runner_fallback_query:-Explain these files}"
 
 # Attachment limits
 MAX_ATTACH_BYTES="${ASK_AI_MAX_ATTACH_BYTES:-204800}"  # 200 KiB
 MAX_ATTACH_FILES="${ASK_AI_MAX_ATTACH_FILES:-20}"
+
+# A typo in ~/.ask_ai must not silently disable attachments: with a non-numeric
+# value every `[ "$size" -le "$limit" ]` fails and all files are skipped.
+case "$MAX_ATTACH_BYTES" in ''|*[!0-9]*) MAX_ATTACH_BYTES=204800 ;; esac
+case "$MAX_ATTACH_FILES" in ''|*[!0-9]*) MAX_ATTACH_FILES=20 ;; esac
 
 # --- Defaults ---
 if [ -z "$QUERY" ]; then
@@ -128,7 +163,7 @@ for f in "${FILES[@]}"; do
         # printf '%s' keeps escape sequences in paths verbatim (no ANSI injection)
         printf '  %b📁 %s%b\n' "$FILE_CYAN" "$f" "$NC"
     else
-        SIZE=$(du -h "$f" 2>/dev/null | cut -f1 || true)
+        SIZE=$(du -h -- "$f" 2>/dev/null | cut -f1 || true)
         printf '  %b📄 %s%b  %b(%s)%b\n' "$FILE_GREEN" "$f" "$NC" "$BOLD" "$SIZE" "$NC"
     fi
 done
@@ -170,7 +205,12 @@ for f in "${FILES[@]}"; do
         is_text=1
     fi
     if [ "$is_text" -eq 1 ] && [ "$size_b" -le "$MAX_ATTACH_BYTES" ] && [ "$ATTACH_COUNT" -lt "$MAX_ATTACH_FILES" ]; then
-        ATTACH_FLAGS+=(-f "$f")
+        # A path starting with "-" would be parsed by opencode as a flag.
+        attach_path="$f"
+        case "$attach_path" in
+            -*) attach_path="$PWD/$attach_path" ;;
+        esac
+        ATTACH_FLAGS+=(-f "$attach_path")
         ATTACHED_NAMES+=("$f")
         ATTACH_COUNT=$((ATTACH_COUNT + 1))
     else
@@ -320,7 +360,12 @@ fi
 # --- Save markdown output ---
 SCRIPT_FILE=""
 if [ -n "$SAVE_FILE" ]; then
-    cp "$TEMP_OUTPUT" "$SAVE_FILE"
+    if [ "$OPENCODE_STATUS" -eq 0 ]; then
+        cp "$TEMP_OUTPUT" "$SAVE_FILE" || SAVE_FILE=""
+    else
+        # A failed run leaves a partial answer: it must not look like a saved one.
+        SAVE_FILE=""
+    fi
 fi
 
 # Optional clipboard copy
@@ -443,13 +488,22 @@ if [ "$IS_SCRIPT" -eq 1 ]; then
 fi
 
 echo ""
-if [ "$OPENCODE_STATUS" -eq 0 ]; then
-    echo -e "${BOLD}${FILE_GREEN}${LBL_DONE}${NC}"
+# The "press Enter to close" hint only makes sense in the terminal window the
+# service menu opened; from `ask` / `askr` the prompt must come back at once.
+if [ "${ASK_AI_PAUSE:-0}" = "1" ]; then
+    DONE_LABEL="$LBL_DONE"
 else
-    echo -e "${BOLD}${ERR_RED}${LBL_DONE}${NC}"
+    DONE_LABEL="$LBL_DONE_INLINE"
+fi
+if [ "$OPENCODE_STATUS" -eq 0 ]; then
+    echo -e "${BOLD}${FILE_GREEN}${DONE_LABEL}${NC}"
+else
+    echo -e "${BOLD}${ERR_RED}${DONE_LABEL}${NC}"
 fi
 if [ -n "$SAVE_FILE" ]; then
     echo -e "${BOLD}${LABEL_YELLOW}${LBL_SAVED}${NC} ${FILE_CYAN}$SAVE_FILE${NC}"
 fi
 echo -n ""
-read -r 2>/dev/null || true
+if [ "${ASK_AI_PAUSE:-0}" = "1" ]; then
+    read -r 2>/dev/null || true
+fi

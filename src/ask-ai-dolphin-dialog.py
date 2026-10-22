@@ -14,6 +14,7 @@ Supports PyQt5 (preferred) and PyQt6.
 
 import os
 import sys
+import traceback
 
 # --- Qt imports (PyQt5 preferred, PyQt6 fallback) ---
 QT_API = 5
@@ -286,16 +287,17 @@ STYLE_DARK = build_style(True)
 def detect_locale():
     """Detect locale: ASK_AI_LOCALE env → $LANG → en_EN.
 
-    ASK_AI_LOCALE is handled case-insensitively (RU, ru, en, EN, etc.).
+    ASK_AI_LOCALE is normalised before comparing, so the documented "ru_RU" /
+    "en_EN" work as well as RU, ru-RU or En_En.
     """
-    ask_locale = os.environ.get("ASK_AI_LOCALE", "").strip().lower()
-    if ask_locale in ("ru_RU", "ru"):
+    ask_locale = os.environ.get("ASK_AI_LOCALE", "").strip().lower().replace("-", "_")
+    if ask_locale in ("ru_ru", "ru"):
         return "ru_RU"
-    if ask_locale in ("en_EN", "en"):
+    if ask_locale in ("en_en", "en"):
         return "en_EN"
 
-    lang = os.environ.get("LANG", "")
-    if lang.startswith(("ru_RU", "ru_UA", "be_BY", "uk_UA")):
+    lang = os.environ.get("LANG", "").lower()
+    if lang.startswith(("ru_ru", "ru_ua", "be_by", "uk_ua")):
         return "ru_RU"
     return "en_EN"
 
@@ -339,6 +341,36 @@ HISTORY_PATH = os.path.expanduser("~/.config/ask-ai-dolphin.history")
 HISTORY_MAX = 10
 
 
+def _encode_history_entry(query):
+    """Flatten a query into one history line.
+
+    The input field is multi-line, but the history file is line based: without
+    escaping, one multi-line query would come back as several entries.
+    """
+    return query.replace("\\", "\\\\").replace("\n", "\\n")
+
+
+def _decode_history_entry(entry):
+    """Reverse _encode_history_entry(); unknown escapes are kept verbatim."""
+    out = []
+    i = 0
+    while i < len(entry):
+        char = entry[i]
+        if char == "\\" and i + 1 < len(entry):
+            nxt = entry[i + 1]
+            if nxt == "n":
+                out.append("\n")
+                i += 2
+                continue
+            if nxt == "\\":
+                out.append("\\")
+                i += 2
+                continue
+        out.append(char)
+        i += 1
+    return "".join(out)
+
+
 def load_history():
     """Return list of recent queries (most recent first), max HISTORY_MAX."""
     if not os.path.isfile(HISTORY_PATH):
@@ -346,7 +378,7 @@ def load_history():
     try:
         with open(HISTORY_PATH, "r", encoding="utf-8") as f:
             lines = [ln.rstrip("\n") for ln in f if ln.strip()]
-        return list(reversed(lines[-HISTORY_MAX:]))
+        return [_decode_history_entry(ln) for ln in reversed(lines[-HISTORY_MAX:])]
     except OSError:
         return []
 
@@ -356,17 +388,21 @@ def save_history_entry(query):
     query = (query or "").strip()
     if not query:
         return
+    entry = _encode_history_entry(query)
     try:
         os.makedirs(os.path.dirname(HISTORY_PATH), exist_ok=True)
         existing = []
         if os.path.isfile(HISTORY_PATH):
             with open(HISTORY_PATH, "r", encoding="utf-8") as f:
                 existing = [ln.rstrip("\n") for ln in f if ln.strip()]
-        existing = [e for e in existing if e != query]
-        existing.append(query)
+        existing = [e for e in existing if e != entry]
+        existing.append(entry)
         existing = existing[-HISTORY_MAX:]
-        with open(HISTORY_PATH, "w", encoding="utf-8") as f:
+        # Write-then-rename: an interrupted write must not truncate the history.
+        tmp_path = HISTORY_PATH + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             f.write("\n".join(existing) + "\n")
+        os.replace(tmp_path, HISTORY_PATH)
     except OSError:
         pass
 
@@ -559,10 +595,10 @@ def main():
     file_info = sys.stdin.read().strip() if not sys.stdin.isatty() else ""
 
     app = QApplication(sys.argv)
-    try:
-        app.setStyle("Breeze")
-    except Exception:
-        pass
+    # Qt falls back to the default style without raising when "Breeze" is not
+    # installed, so there is nothing to guard here; the stylesheet below defines
+    # the actual look either way.
+    app.setStyle("Breeze")
 
     font = QFont()
     try:
@@ -581,4 +617,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except BaseException:
+        # Exit code 2 tells the caller (ask-ai-dolphin.sh) that this is a crash,
+        # not a user cancel (1): a traceback must not be mistaken for "closed".
+        traceback.print_exc()
+        sys.exit(2)

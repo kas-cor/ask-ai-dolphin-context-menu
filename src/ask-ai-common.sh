@@ -7,14 +7,17 @@
 # Priority: ASK_AI_LOCALE env → $LANG → en_EN
 # Russian also from ru_UA*, be_BY*, uk_UA*.
 ask_ai_detect_locale() {
-    _locale_lower="${ASK_AI_LOCALE:-}"
-    _locale_lower="${_locale_lower,,}"
-    case "$_locale_lower" in
-        ru_RU|ru) echo "ru_RU"; return ;;
-        en_EN|en) echo "en_EN"; return ;;
+    local ask_locale="${ASK_AI_LOCALE:-}"
+    # Normalise before comparing: ASK_AI_LOCALE is documented as "ru_RU" /
+    # "en_EN", but users also write RU, ru-RU or En_En.
+    ask_locale="${ask_locale,,}"
+    ask_locale="${ask_locale//-/_}"
+    case "$ask_locale" in
+        ru|ru_ru) echo "ru_RU"; return 0 ;;
+        en|en_en) echo "en_EN"; return 0 ;;
     esac
     case "${LANG:-}" in
-        ru_RU*|ru_UA*|be_BY*|uk_UA*) echo "ru_RU"; return ;;
+        ru_RU*|ru_UA*|be_BY*|uk_UA*) echo "ru_RU"; return 0 ;;
     esac
     echo "en_EN"
 }
@@ -58,12 +61,19 @@ ask_ai_is_text_file() {
                 ;;
         esac
     fi
-    # Fallback: reject if NUL byte in first 8k
-    if command -v grep &>/dev/null; then
-        ! grep -a -q $'\0' < <(head -c 8192 -- "$f" 2>/dev/null)
-    else
+    # Fallback: reject if a NUL byte appears in the first 8 KiB.
+    # grep cannot be used here: bash strings cannot hold NUL, so `$'\0'`
+    # expands to an empty pattern that matches every file.
+    if command -v od &>/dev/null; then
+        local bytes
+        bytes=$(od -An -tx1 -N 8192 -- "$f" 2>/dev/null) || return 1
+        case "$bytes" in
+            *" 00"*) return 1 ;;
+        esac
         return 0
     fi
+    # Neither file(1) nor od(1): assume text rather than dropping attachments.
+    return 0
 }
 
 # File size in bytes (portable).
@@ -138,15 +148,40 @@ ask_ai_apply_effort() {
     oc_bin=$(ask_ai_opencode_bin 2>/dev/null) || return 2
     command -v python3 &>/dev/null || return 2
 
-    local payload_file
-    # opencode v2 truncates stdout to 256 KiB when it is a pipe/command
-    # substitution; a redirect to a regular file yields the full catalog.
-    payload_file=$(mktemp) || return 2
-    if ! "$oc_bin" api GET /api/model > "$payload_file" 2>/dev/null; then
-        rm -f "$payload_file"
-        return 2
+    # The catalog changes rarely and fetching it costs a network round-trip on
+    # every query, so it is cached for a day. A stale catalog is still used
+    # when the API is unavailable.
+    local cache_dir="${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/ask-ai"
+    local cache_file="$cache_dir/models.json"
+    local ttl=86400 mtime="" now payload_file=""
+
+    if [ -f "$cache_file" ]; then
+        mtime=$(stat -c %Y -- "$cache_file" 2>/dev/null \
+            || stat -f %m -- "$cache_file" 2>/dev/null \
+            || true)
+        case "$mtime" in ''|*[!0-9]*) mtime=0 ;; esac
+        now=$(date +%s)
+        if [ "$mtime" -gt 0 ] && [ $((now - mtime)) -lt "$ttl" ]; then
+            payload_file="$cache_file"
+        fi
     fi
-    [ -s "$payload_file" ] || { rm -f "$payload_file"; return 2; }
+
+    if [ -z "$payload_file" ]; then
+        mkdir -p "$cache_dir" 2>/dev/null || true
+        # opencode v2 truncates stdout to 256 KiB when it is a pipe/command
+        # substitution; a redirect to a regular file yields the full catalog.
+        payload_file=$(mktemp) || return 2
+        if "$oc_bin" api GET /api/model > "$payload_file" 2>/dev/null \
+            && [ -s "$payload_file" ]; then
+            if mv -f "$payload_file" "$cache_file" 2>/dev/null; then
+                payload_file="$cache_file"
+            fi
+        else
+            rm -f "$payload_file"
+            [ -s "$cache_file" ] || return 2
+            payload_file="$cache_file"
+        fi
+    fi
 
     # Exit codes from python: 0 = variant found, 1 = not declared, 2 = bad catalog
     local py_rc=0
@@ -167,7 +202,9 @@ for m in data:
         sys.exit(1)
 sys.exit(1)
 PY
-    rm -f "$payload_file"
+    if [ "$payload_file" != "$cache_file" ]; then
+        rm -f "$payload_file"
+    fi
     [ "$py_rc" -eq 0 ] || return "$py_rc"
 
     printf '%s#%s\n' "$model" "$effort"
@@ -179,11 +216,32 @@ ask_ai_dir_listing() {
     local max="${2:-50}"
     local count=0
     local entry
-    # shellcheck disable=SC2012
+
+    [ -d "$d" ] || return 0
+
+    # find(1) stops as soon as the limit is reached; globbing "$d"/* first
+    # would expand every entry of a huge directory before trimming.
+    if command -v find &>/dev/null; then
+        while IFS= read -r -d '' entry; do
+            printf '  %s\n' "${entry##*/}"
+            count=$((count + 1))
+            if [ "$count" -ge "$max" ]; then
+                echo "  …"
+                break
+            fi
+        done < <(find "$d" -mindepth 1 -maxdepth 1 -print0 2>/dev/null)
+        return 0
+    fi
+
+    # Fallback without find(1): glob, including hidden entries.
     for entry in "$d"/* "$d"/.[!.]* "$d"/..?*; do
         [ -e "$entry" ] || continue
-        printf '  %s\n' "$(basename "$entry")"
+        printf '  %s\n' "$(basename -- "$entry")"
         count=$((count + 1))
-        [ "$count" -ge "$max" ] && { echo "  …"; break; }
+        if [ "$count" -ge "$max" ]; then
+            echo "  …"
+            break
+        fi
     done
+    return 0
 }
