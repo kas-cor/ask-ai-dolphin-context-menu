@@ -146,6 +146,12 @@ nano ~/.ask_ai
 | `ASK_AI_LOCALE` | auto-detect (system `$LANG`) | Force UI language: `ru_RU` / `en_EN` |
 | `ASK_AI_THEME` | auto-detect (system palette) | Force UI theme: `dark` / `light` |
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
+| `ASK_AI_ACP` | unset | Set `1` to drive any [ACP](https://agentclientprotocol.com) agent instead of the opencode CLI (experimental) |
+| `ASK_AI_AGENT_CMD` | `opencode acp` | ACP agent command line, e.g. `gemini --experimental-acp`, `claude-code-acp`, `codex-acp` |
+| `ASK_AI_PERMISSION` | `allow-read` | ACP permission policy: `allow-read` (read/search/fetch only) or `deny` |
+| `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Cancel the turn when no answer text arrives for this many seconds |
+| `ASK_AI_ACP_VERBOSE` | unset | `1` prints agent thoughts and tool calls on stderr |
+| `ASK_AI_ACP_TRACE` | unset | Log JSON-RPC traffic to this file |
 
 `~/.ask_ai` is read both by the `ask`/`askr` shell functions and, directly, by the Dolphin menu entry and the terminal runner — the desktop session does not source your shell rc, and Konsole hands the command to an already running window without passing the launcher's environment, so both scripts would otherwise ignore these settings.
 
@@ -163,6 +169,30 @@ export ASK_AI_THEME="dark"      # force dark theme
 ```
 
 See [Localization](#localization) for locale details. The theme auto-detects from your KDE color scheme and works for both the dialog and the runner header.
+
+### ACP harnesses (experimental)
+
+The runner talks to `opencode` through its CLI by default. With ACP (Agent Client Protocol) it can drive any harness that speaks the protocol — `opencode acp`, Gemini CLI, Claude Code, Codex, Qwen, Goose and others:
+
+```bash
+export ASK_AI_ACP=1                              # enable the ACP path
+export ASK_AI_AGENT_CMD="gemini --experimental-acp"   # or claude-code-acp, codex-acp, …
+export ASK_AI_PERMISSION="allow-read"             # read-only tools auto-approved
+```
+
+What maps onto what:
+
+| Setting | ACP equivalent |
+|---|---|
+| `ASK_AI_MODEL` | `model` config option, when the agent exposes one |
+| `ASK_AI_EFFORT` | `effort` / thought-level option, when the agent exposes one |
+| `ASK_AI_MODE` | `mode` option (`plan` / `build`) |
+| selected files | `resource_link` content blocks with absolute `file://` URIs |
+| `ASK_AI_SAVE_DIR`, `ASK_AI_CLIPBOARD`, `ASK_AI_AUTO_EXEC` | unchanged — they work on the streamed Markdown |
+
+Only the agent's answer text is printed, so glow, the saved `.md` and the script detection see clean Markdown; thoughts and tool calls go to stderr (see `ASK_AI_ACP_VERBOSE`). Unsupported options are reported and skipped instead of failing the query. If the agent needs a login, the runner tells you so and exits with code 3 — run the agent's login command in a terminal, then retry.
+
+Diagnostics: `ASK_AI_ACP_TRACE=/tmp/acp.log` records every JSON-RPC message.
 
 ### `ask` / `askr` terminal functions
 

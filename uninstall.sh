@@ -14,7 +14,8 @@ SERVICEMENU_DIR="$HOME/.local/share/kio/servicemenus"
 echo "Uninstalling Ask AI Dolphin context menu..."
 
 # --- Remove scripts ---
-for f in ask-ai-common.sh ask-ai-dolphin.sh ask-ai-dolphin-run.sh ask-ai-dolphin-dialog.py; do
+for f in ask-ai-common.sh ask-ai-dolphin.sh ask-ai-dolphin-run.sh \
+    ask-ai-dolphin-dialog.py ask-ai-acp-client.py; do
     if [ -f "$BIN_DIR/$f" ]; then
         rm -v "$BIN_DIR/$f"
     fi

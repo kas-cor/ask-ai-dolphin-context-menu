@@ -64,6 +64,14 @@ export ASK_AI_MODEL="opencode/mimo-v2.6-flash-free"
 # Optional preferred terminal if konsole is not installed:
 # export TERMINAL="kgx"
 
+# Experimental: drive any ACP (Agent Client Protocol) harness instead of the
+# opencode CLI — `opencode acp`, Gemini CLI, Claude Code, Codex, Qwen, Goose…
+# export ASK_AI_ACP=1
+# export ASK_AI_AGENT_CMD="gemini --experimental-acp"
+# export ASK_AI_PERMISSION="allow-read"   # or "deny"
+# export ASK_AI_ACP_VERBOSE=1             # thoughts and tool calls on stderr
+# export ASK_AI_ACP_TRACE="$HOME/.cache/ask-ai/acp.log"
+
 # ask / askr use ask-ai-dolphin-run.sh (from the Ask AI Dolphin Context Menu project).
 # This script adds the current directory (PWD) as file context for the AI.
 # Requires prior installation: ./install.sh (see README.md)

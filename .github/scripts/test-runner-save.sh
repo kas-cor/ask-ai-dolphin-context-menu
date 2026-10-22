@@ -17,6 +17,7 @@
 #  14. opencode v2 resolver (v1 in PATH must be skipped)
 #  15. Failure handling: no .md on error, bad limits, "-" paths, pause mode
 #  16. ~/.ask_ai reaches the runner when Konsole drops the launcher's env
+#  17. ACP harness: ASK_AI_ACP=1 drives an agent without the opencode CLI
 
 set -euo pipefail
 
@@ -771,6 +772,56 @@ if grep -qF '✅ Done.' "$TEST_DIR/fake-run-badcfg.log" \
     pass "Broken ~/.ask_ai is ignored without breaking the query"
 else
     fail "Broken ~/.ask_ai broke the runner: $(tail -3 "$TEST_DIR/fake-run-badcfg.log" | tr '\n' ' ')"
+fi
+
+# --------------------------------
+print_header "17. ACP harness (ASK_AI_ACP=1)"
+# --------------------------------
+# The runner must be able to drive any ACP agent: no opencode in PATH (the ACP
+# path never checks for it), a fake agent that speaks the protocol, and the
+# usual save/script pipeline on top of its Markdown output.
+ACP_LOG="$TEST_DIR/acp-agent.log"
+: >"$ACP_LOG"
+rm -f "$FAKE_SAVE_DIR"/*
+# -u ASK_AI_MODEL: a developer's own export must not hide the default handling.
+env -u ASK_AI_MODEL ASK_AI_ACP=1 \
+    ASK_AI_AGENT_CMD="python3 $SCRIPT_DIR/fake-acp-agent.py" \
+    FAKE_ACP_LOG="$ACP_LOG" \
+    PATH="/usr/bin:/bin" HOME="$FAKE_HOME" GLOW_DISABLED=1 ASK_AI_LOCALE=en_EN \
+    ASK_AI_AUTO_EXEC=0 ASK_AI_SAVE_DIR="$FAKE_SAVE_DIR" \
+    bash "$RUNNER_FILE" "acp query" "$TEST_DIR/attach-sample.py" \
+    </dev/null >"$TEST_DIR/fake-run-acp.log" 2>&1
+
+if grep -qF 'Harness:' "$TEST_DIR/fake-run-acp.log"; then
+    pass "Runner announces the ACP harness"
+else
+    fail "Runner did not switch to ACP: $(tail -3 "$TEST_DIR/fake-run-acp.log" | tr '\n' ' ')"
+fi
+if grep -qF 'agent default' "$TEST_DIR/fake-run-acp.log"; then
+    pass "ACP mode does not inject the opencode CLI model default"
+else
+    fail "ACP mode printed a CLI model as the selected one"
+fi
+if grep -qF 'Hello from ACP' "$TEST_DIR/fake-run-acp.log"; then
+    pass "Answer streamed through the runner pipeline"
+else
+    fail "No ACP answer in the runner output"
+fi
+if grep -qF 'resource_link' "$ACP_LOG"; then
+    pass "Selected file attached as an ACP resource_link"
+else
+    fail "Attachment missing from the ACP prompt"
+fi
+acp_md=$(find "$FAKE_SAVE_DIR" -maxdepth 1 -type f -name '*.md' | head -1)
+if [ -n "$acp_md" ] && grep -qF 'Hello from ACP' "$acp_md"; then
+    pass ".md saved from the ACP answer"
+else
+    fail "ACP answer was not saved as .md"
+fi
+if grep -qF 'opencode v2 not found' "$TEST_DIR/fake-run-acp.log"; then
+    fail "ACP mode still required the opencode CLI"
+else
+    pass "ACP mode works without the opencode CLI"
 fi
 
 # --------------------------------

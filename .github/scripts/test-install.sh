@@ -90,7 +90,8 @@ if [ -f "$H1/.local/bin/locales/ru_RU" ] && [ -f "$H1/.local/bin/locales/en_EN" 
 else
     fail "Locale files missing after install"
 fi
-for f in ask-ai-common.sh ask-ai-dolphin.sh ask-ai-dolphin-run.sh ask-ai-dolphin-dialog.py; do
+for f in ask-ai-common.sh ask-ai-dolphin.sh ask-ai-dolphin-run.sh ask-ai-dolphin-dialog.py \
+    ask-ai-acp-client.py; do
     [ -x "$H1/.local/bin/$f" ] || fail "$f missing or not executable"
 done
 pass "Scripts installed and executable"
@@ -210,7 +211,8 @@ else
     fail "Uninstaller failed with rc=$rc"
 fi
 
-if [ ! -e "$H7/.local/bin/ask-ai-dolphin.sh" ] && [ ! -e "$H7/.local/bin/ask-ai-common.sh" ]; then
+if [ ! -e "$H7/.local/bin/ask-ai-dolphin.sh" ] && [ ! -e "$H7/.local/bin/ask-ai-common.sh" ] \
+    && [ ! -e "$H7/.local/bin/ask-ai-acp-client.py" ]; then
     pass "Scripts removed"
 else
     fail "Scripts were not removed"

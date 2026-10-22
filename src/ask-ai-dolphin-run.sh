@@ -98,6 +98,11 @@ LBL_ATTACHED="${runner_lbl_attached:-Attached files:}"
 LBL_SKIPPED_ATTACH="${runner_lbl_skipped_attach:-Skipped (binary/large/dir):}"
 LBL_CLIPBOARD="${runner_lbl_clipboard:-Copied response to clipboard.}"
 LBL_DONE_INLINE="${runner_lbl_done_inline:-✅ Done.}"
+LBL_HARNESS="${runner_lbl_harness:-Harness:}"
+LBL_MODEL_DEFAULT="${runner_lbl_model_default:-agent default}"
+LBL_AGENT_FAILED="${runner_lbl_agent_failed:-agent exited with an error (code %s)}"
+LBL_AGENT_AUTH="${runner_lbl_agent_auth:-The agent requires authentication — run its login command in a terminal, then retry.}"
+LBL_ACP_UNAVAILABLE="${runner_lbl_acp_unavailable:-ACP requested (ASK_AI_ACP=1) but the client or python3 is missing — using the opencode CLI.}"
 FALLBACK_QUERY="${runner_fallback_query:-Explain these files}"
 
 # Attachment limits
@@ -234,27 +239,55 @@ fi
 PROMPT+="
 My question about them: $QUERY"
 
-# --- Check opencode (v2 required) ---
+# --- Harness selection ---
+# ASK_AI_ACP=1 drives any agent that speaks the Agent Client Protocol through
+# ask-ai-acp-client.py: `opencode acp`, `gemini --experimental-acp`,
+# `claude-code-acp`, `codex-acp`, … (ASK_AI_AGENT_CMD overrides the command).
+# Opt-in during phase 0: the opencode CLI path below stays the default until
+# the ACP client covers every documented behaviour on real agents.
+ACP_MODE=0
+ACP_CLIENT="$INSTALL_DIR/ask-ai-acp-client.py"
+[ -f "$ACP_CLIENT" ] || ACP_CLIENT="$(dirname "$INSTALL_DIR")/src/ask-ai-acp-client.py"
+case "${ASK_AI_ACP:-0}" in
+    1|yes|true|on)
+        if [ -f "$ACP_CLIENT" ] && command -v python3 &>/dev/null; then
+            ACP_MODE=1
+        else
+            echo -e "${BOLD}${LABEL_YELLOW}${LBL_ACP_UNAVAILABLE}${NC}"
+        fi
+        ;;
+esac
+
+# --- Check opencode (v2 required, CLI path only) ---
 # The GUI session PATH may resolve `opencode` to a system v1 build; v1 breaks
 # `run -f` (it swallows the prompt and dies with "File not found: <prompt>").
 # ask_ai_opencode_bin picks the first v2 binary (PATH → ~/.opencode/bin →
 # ~/.local/bin); without common.sh fall back to whatever is in PATH.
 OPENCODE_BIN=""
-if declare -F ask_ai_opencode_bin &>/dev/null; then
-    OPENCODE_BIN=$(ask_ai_opencode_bin 2>/dev/null || true)
-else
-    OPENCODE_BIN=$(command -v opencode 2>/dev/null || true)
-fi
-if [ -z "$OPENCODE_BIN" ]; then
-    if command -v opencode &>/dev/null; then
-        echo -e "${BOLD}${ERR_RED}${LBL_ERR_OPENCODE_V2}${NC}"
+if [ "$ACP_MODE" -eq 0 ]; then
+    if declare -F ask_ai_opencode_bin &>/dev/null; then
+        OPENCODE_BIN=$(ask_ai_opencode_bin 2>/dev/null || true)
     else
-        echo -e "${BOLD}${ERR_RED}${LBL_ERR_OPENCODE}${NC}"
+        OPENCODE_BIN=$(command -v opencode 2>/dev/null || true)
     fi
-    exit 1
+    if [ -z "$OPENCODE_BIN" ]; then
+        if command -v opencode &>/dev/null; then
+            echo -e "${BOLD}${ERR_RED}${LBL_ERR_OPENCODE_V2}${NC}"
+        else
+            echo -e "${BOLD}${ERR_RED}${LBL_ERR_OPENCODE}${NC}"
+        fi
+        exit 1
+    fi
 fi
 
-MODEL="${ASK_AI_MODEL:-opencode/mimo-v2.6-flash-free}"
+# ACP: an empty ASK_AI_MODEL means "whatever the agent is configured with",
+# and the CLI-style default below is not a valid ACP model id.
+ACP_MODEL_VALUE="${ASK_AI_MODEL:-}"
+if [ "$ACP_MODE" -eq 1 ] && [ -z "$ACP_MODEL_VALUE" ]; then
+    MODEL="$LBL_MODEL_DEFAULT"
+else
+    MODEL="${ASK_AI_MODEL:-opencode/mimo-v2.6-flash-free}"
+fi
 
 # opencode v2: always pass an explicit agent. Without a --agent flag the model
 # is taken from the user's opencode config (default_agent), and v2 then appends
@@ -267,7 +300,12 @@ MODE="${ASK_AI_MODE:-plan}"
 # opencode v2: effort is a model variant (provider/model#variant), not --variant.
 # Only applied when the model actually declares it, so the query never fails.
 EXTRA_FLAGS=()
-if [ -n "${ASK_AI_EFFORT:-}" ]; then
+if [ "$ACP_MODE" -eq 1 ]; then
+    # The ACP client maps the effort onto the agent's own config option and
+    # warns when the agent has none, so no model catalog is queried here.
+    EFFORT_LINE=""
+    [ -n "${ASK_AI_EFFORT:-}" ] && EFFORT_LINE=$'\n'"${BOLD}${LBL_EFFORT}${NC} ${FILE_CYAN}${ASK_AI_EFFORT}${NC}"
+elif [ -n "${ASK_AI_EFFORT:-}" ]; then
     EFFORT_RC=0
     _effort_model=""
     if declare -F ask_ai_apply_effort &>/dev/null; then
@@ -295,7 +333,11 @@ if [ -n "${ASK_AI_EFFORT:-}" ]; then
     esac
 fi
 
-echo -e "${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
+if [ "$ACP_MODE" -eq 1 ]; then
+    echo -e "${BOLD}${LBL_HARNESS}${NC} ${FILE_CYAN}ACP${NC} ${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
+else
+    echo -e "${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
+fi
 if [ -n "${EFFORT_LINE:-}" ]; then
     echo -e "$EFFORT_LINE"
 fi
@@ -336,25 +378,63 @@ print(s or 'result')
     SAVE_FILE="$ASK_AI_SAVE_DIR/${QUERY_SLUG}-${TIMESTAMP}.md"
 fi
 
-# --- Stream with pipefail so opencode failures are visible ---
+# --- Ask the agent ---
+# Both paths print the answer as Markdown on stdout, so the surrounding
+# pipeline (save, script detection, clipboard) stays exactly the same.
+ACP_CWD=""
+run_agent() {
+    if [ "$ACP_MODE" -eq 1 ]; then
+        ACP_ARGS=("$ACP_CLIENT" --cwd "$ACP_CWD" --mode "$MODE"
+            --permission "${ASK_AI_PERMISSION:-allow-read}")
+        if [ -n "$ACP_MODEL_VALUE" ]; then
+            ACP_ARGS+=(--model "$ACP_MODEL_VALUE")
+        fi
+        if [ -n "${ASK_AI_EFFORT:-}" ]; then
+            ACP_ARGS+=(--effort "$ASK_AI_EFFORT")
+        fi
+        if [ "${ASK_AI_ACP_VERBOSE:-0}" = "1" ]; then
+            ACP_ARGS+=(--verbose)
+        fi
+        python3 "${ACP_ARGS[@]}" "$QUERY" "${ATTACHED_NAMES[@]}"
+    else
+        "$OPENCODE_BIN" run --model "$MODEL" "${EXTRA_FLAGS[@]}" "${ATTACH_FLAGS[@]}" "$PROMPT"
+    fi
+}
+
+if [ "$ACP_MODE" -eq 1 ]; then
+    ACP_CWD="${FILES[0]:-$PWD}"
+    if [ -f "$ACP_CWD" ]; then
+        ACP_CWD=$(dirname -- "$ACP_CWD")
+    fi
+fi
+
 echo -e "${BOLD}${LBL_STREAMING}${NC}"
 echo ""
 
+# pipefail keeps an agent failure visible instead of letting a formatting stage
+# swallow it.
 set -o pipefail
 OPENCODE_STATUS=0
 if [ "${GLOW_DISABLED:-0}" = "1" ]; then
-    "$OPENCODE_BIN" run --model "$MODEL" "${EXTRA_FLAGS[@]}" "${ATTACH_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT" || OPENCODE_STATUS=$?
+    run_agent | tee "$TEMP_OUTPUT" || OPENCODE_STATUS=$?
 elif command -v glow &>/dev/null; then
-    "$OPENCODE_BIN" run --model "$MODEL" "${EXTRA_FLAGS[@]}" "${ATTACH_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT" | glow - || OPENCODE_STATUS=$?
+    run_agent | tee "$TEMP_OUTPUT" | glow - || OPENCODE_STATUS=$?
 else
     echo -e "${LABEL_YELLOW}${LBL_GLOW_MISSING}${NC}"
-    "$OPENCODE_BIN" run --model "$MODEL" "${EXTRA_FLAGS[@]}" "${ATTACH_FLAGS[@]}" "$PROMPT" | tee "$TEMP_OUTPUT" || OPENCODE_STATUS=$?
+    run_agent | tee "$TEMP_OUTPUT" || OPENCODE_STATUS=$?
 fi
 set +o pipefail
 
 if [ "$OPENCODE_STATUS" -ne 0 ]; then
-    # shellcheck disable=SC2059
-    printf "${BOLD}${ERR_RED}${LBL_OPENCODE_FAILED}${NC}\n" "$OPENCODE_STATUS"
+    if [ "$ACP_MODE" -eq 1 ] && [ "$OPENCODE_STATUS" -eq 3 ]; then
+        echo -e "${BOLD}${ERR_RED}${LBL_AGENT_AUTH}${NC}"
+    elif [ "$ACP_MODE" -eq 1 ]; then
+        # shellcheck disable=SC2059
+        printf "${BOLD}${ERR_RED}${LBL_AGENT_FAILED}${NC}\n" "$OPENCODE_STATUS"
+    else
+        # shellcheck disable=SC2059
+        printf "${BOLD}${ERR_RED}${LBL_OPENCODE_FAILED}${NC}\n" "$OPENCODE_STATUS"
+    fi
 fi
 
 # --- Save markdown output ---

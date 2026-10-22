@@ -38,6 +38,7 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 | `src/ask-ai-dolphin.sh` | Entry point: config, dialog, terminal launch |
 | `src/ask-ai-dolphin-run.sh` | Runner: opencode + glow, save, script confirm |
 | `src/ask-ai-dolphin-dialog.py` | Dialog: presets, history, multi-line input (i18n EN/RU) |
+| `src/ask-ai-acp-client.py` | ACP client (experimental, `ASK_AI_ACP=1`): drives any ACP agent over stdio, streams the answer |
 | `servicemenu/ask-ai-dolphin.desktop` | KDE service menu (`Name[ru]`) |
 | `config/ask-ai-dolphin.cfg.example` | Example presets (EN) |
 | `config/ask-ai-dolphin.cfg.ru_RU.example` | Example presets (RU) |
@@ -61,6 +62,11 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 | `ASK_AI_LOCALE` | auto (`$LANG`) | Force UI language: `ru_RU` / `en_EN` |
 | `ASK_AI_THEME` | auto (palette / COLORFGBG) | Force UI theme: `dark` / `light` |
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
+| `ASK_AI_ACP` | unset | `1` runs the query through an ACP agent instead of `opencode run` |
+| `ASK_AI_AGENT_CMD` | `opencode acp` | ACP agent command line (`gemini --experimental-acp`, `claude-code-acp`, `codex-acp`, …) |
+| `ASK_AI_PERMISSION` | `allow-read` | `session/request_permission` policy: allow read/search/fetch, deny the rest |
+| `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Cancel a turn when no answer text arrives for this many seconds |
+| `ASK_AI_ACP_VERBOSE` / `ASK_AI_ACP_TRACE` | unset | Thoughts and tool calls on stderr / JSON-RPC log file |
 
 `~/.ask_ai` is sourced by the entry script (GUI path) as well as by the shell rc (`ask` / `askr`): the desktop session does not source rc files.
 
@@ -71,7 +77,7 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 3. Launches dialog with presets on argv and file info on stdin
 4. Dialog prints query to stdout (0 = OK, 1 = Cancel); saves to `~/.config/ask-ai-dolphin.history`
 5. Opens terminal with `ask-ai-dolphin-run.sh "<query>" <files...>` (`$TERMINAL` → konsole → kgx/gnome-terminal/xterm → inline TTY). Konsole hands `-e cmd` to an already running instance, so the session never inherits the launcher's environment: the pause flag travels on the command line (`env ASK_AI_PAUSE=1 …`), and the runner reads `~/.ask_ai` itself
-6. Runner attaches readable text files via `opencode run -f …`, streams through `glow` (unless `GLOW_DISABLED=1`)
+6. Runner attaches readable text files via `opencode run -f …` (or, with `ASK_AI_ACP=1`, as `resource_link` blocks of an ACP `session/prompt`), streams through `glow` (unless `GLOW_DISABLED=1`). ACP mode prints only `agent_message_chunk` text, so the saved `.md`, glow and script detection still see clean Markdown
 7. If response is a shebang script: save `.sh`, then run only per `ASK_AI_AUTO_EXEC` (default: confirm)
 
 ## Config Presets
@@ -119,6 +125,7 @@ Located in `.github/scripts/`, run via `.github/workflows/ci.yml`.
 | `test-dialog-i18n.py` | Dialog locale forms + history round-trip |
 | `test-entry-dialog.sh` | Dialog cancel/crash handling, terminal launch, `~/.ask_ai` |
 | `test-install.sh` | Installer e2e in a sandboxed HOME (locale arg, layout, `.desktop`) |
-| `test-runner-save.sh` | Shebang, slug, AUTO_EXEC matrix, common.sh, attach limits, failure paths |
+| `test-runner-save.sh` | Shebang, slug, AUTO_EXEC matrix, common.sh, attach limits, failure paths, ACP switch |
+| `test-acp-client.sh` | ACP client against `fake-acp-agent.py`: streaming, attachments, config options, permissions, cancel, errors |
 
-CI pipeline: Shell syntax → ShellCheck → Python syntax → Locale validation → PyQt5 → Qt compat → ASK_AI_THEME → Common helpers → Dialog locale/history → Entry point → Installer → Runner tests.
+CI pipeline: Shell syntax → ShellCheck → Python syntax → Locale validation → PyQt5 → Qt compat → ASK_AI_THEME → Common helpers → Dialog locale/history → Entry point → Installer → ACP client → Runner tests.

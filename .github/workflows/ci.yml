@@ -30,7 +30,9 @@ jobs:
       - name: Python syntax check
         run: |
           python3 -m py_compile src/ask-ai-dolphin-dialog.py
+          python3 -m py_compile src/ask-ai-acp-client.py
           python3 -m py_compile .github/scripts/test-dialog-i18n.py
+          python3 -m py_compile .github/scripts/fake-acp-agent.py
           echo "Python syntax OK"
 
       - name: Locale files validation
@@ -70,6 +72,11 @@ jobs:
         run: |
           bash .github/scripts/test-install.sh
           echo "Installer OK"
+
+      - name: ACP client test (fake agent)
+        run: |
+          bash .github/scripts/test-acp-client.sh
+          echo "ACP client OK"
 
       - name: Runner save & script execution test
         run: |

@@ -161,6 +161,10 @@ install -m 755 "$PROJECT_DIR/src/ask-ai-common.sh"        "$BIN_DIR/ask-ai-commo
 install -m 755 "$PROJECT_DIR/src/ask-ai-dolphin.sh"       "$BIN_DIR/ask-ai-dolphin.sh"
 install -m 755 "$PROJECT_DIR/src/ask-ai-dolphin-run.sh"   "$BIN_DIR/ask-ai-dolphin-run.sh"
 install -m 755 "$PROJECT_DIR/src/ask-ai-dolphin-dialog.py" "$BIN_DIR/ask-ai-dolphin-dialog.py"
+# ACP client (experimental, ASK_AI_ACP=1): optional, the CLI path works without it.
+if [ -f "$PROJECT_DIR/src/ask-ai-acp-client.py" ]; then
+    install -m 755 "$PROJECT_DIR/src/ask-ai-acp-client.py" "$BIN_DIR/ask-ai-acp-client.py"
+fi
 
 # Copy every locale shipped with this checkout: adding a language must not
 # require editing the installer.
