@@ -17,7 +17,8 @@
 #  14. opencode v2 resolver (v1 in PATH must be skipped)
 #  15. Failure handling: no .md on error, bad limits, "-" paths, pause mode
 #  16. ~/.ask_ai reaches the runner when Konsole drops the launcher's env
-#  17. ACP harness: default path drives an agent without the opencode CLI
+#  17. ACP harness: default path drives an agent without the opencode CLI,
+#      including a directory selection described by its listing
 #  18. Agent registry: id → command, install hints, ASK_AI_AGENT_CMD override
 
 set -euo pipefail
@@ -830,6 +831,25 @@ if grep -qF 'opencode v2 not found' "$TEST_DIR/fake-run-acp.log"; then
     fail "ACP mode still required the opencode CLI"
 else
     pass "ACP mode works without the opencode CLI"
+fi
+
+# A selected directory cannot be attached as a file: its listing has to travel
+# as text, otherwise the agent gets a question about nothing.
+mkdir -p "$TEST_DIR/selected-dir"
+printf 'notes body\n' >"$TEST_DIR/selected-dir/notes.md"
+: >"$ACP_LOG"
+rm -f "$FAKE_SAVE_DIR"/*
+env -u ASK_AI_MODEL -u ASK_AI_ACP -u ASK_AI_HARNESS \
+    ASK_AI_AGENT_CMD="python3 $SCRIPT_DIR/fake-acp-agent.py" \
+    FAKE_ACP_LOG="$ACP_LOG" \
+    PATH="/usr/bin:/bin" HOME="$FAKE_HOME" GLOW_DISABLED=1 ASK_AI_LOCALE=en_EN \
+    ASK_AI_AUTO_EXEC=0 ASK_AI_SAVE_DIR="$FAKE_SAVE_DIR" \
+    bash "$RUNNER_FILE" "what is in this folder" "$TEST_DIR/selected-dir" \
+    </dev/null >"$TEST_DIR/fake-run-acp-dir.log" 2>&1
+if grep -qF 'Directory listing of' "$ACP_LOG" && grep -qF 'notes.md' "$ACP_LOG"; then
+    pass "Selected directory is described to the agent (listing + entries)"
+else
+    fail "Directory selection sent no listing: $(head -c 300 "$ACP_LOG")"
 fi
 
 # --- Escape hatch: ASK_AI_HARNESS=cli and the old ASK_AI_ACP=0 keep the CLI

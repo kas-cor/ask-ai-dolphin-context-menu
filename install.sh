@@ -102,8 +102,36 @@ fi
 
 e checking_deps
 
+# ACP is the default harness, so the agent may well be gemini/claude/codex:
+# check the binary of the agent that will actually run, not `opencode`.
+AGENT_HARNESS="acp"
+case "${ASK_AI_HARNESS:-}" in
+    cli|opencode|legacy) AGENT_HARNESS="cli" ;;
+    "")
+        case "${ASK_AI_ACP:-}" in
+            0|no|false|off) AGENT_HARNESS="cli" ;;
+        esac
+        ;;
+esac
+AGENT_ID="${ASK_AI_AGENT:-opencode}"
+if [ "$AGENT_HARNESS" = "cli" ]; then
+    AGENT_BIN="opencode"
+    if declare -F ask_ai_opencode_bin &>/dev/null; then
+        AGENT_BIN=$(ask_ai_opencode_bin 2>/dev/null || true)
+        AGENT_BIN="${AGENT_BIN:-opencode}"
+    fi
+else
+    AGENT_CMD="${ASK_AI_AGENT_CMD:-}"
+    if [ -z "$AGENT_CMD" ] && declare -F ask_ai_agent_command &>/dev/null; then
+        AGENT_CMD=$(ask_ai_agent_command "$AGENT_ID" 2>/dev/null || true)
+    fi
+    AGENT_BIN="${AGENT_CMD%% *}"
+    AGENT_BIN="${AGENT_BIN:-opencode}"
+fi
+
 MISSING=""
-for cmd in python3 konsole opencode; do
+MISSING_OPENCODE=0
+for cmd in python3 konsole; do
     if ! command -v "$cmd" &>/dev/null; then
         # konsole is preferred but not strictly required if another terminal exists
         if [ "$cmd" = "konsole" ]; then
@@ -116,6 +144,17 @@ for cmd in python3 konsole opencode; do
     fi
 done
 
+if ! command -v "$AGENT_BIN" &>/dev/null; then
+    AGENT_HINT=""
+    if declare -F ask_ai_agent_install_hint &>/dev/null; then
+        AGENT_HINT=$(ask_ai_agent_install_hint "$AGENT_ID" 2>/dev/null || true)
+    fi
+    MISSING="$MISSING  - $AGENT_BIN${AGENT_HINT:+ ($AGENT_HINT)}\n"
+    if [ "$AGENT_BIN" = "opencode" ]; then
+        MISSING_OPENCODE=1
+    fi
+fi
+
 if ! python3 -c "import PyQt5" 2>/dev/null && ! python3 -c "import PyQt6" 2>/dev/null; then
     MISSING="$MISSING  - python3-PyQt5 (or PyQt6)\n"
 fi
@@ -126,15 +165,22 @@ if [ -n "$MISSING" ]; then
     echo -e "$MISSING"
     echo ""
     e install_them
-    e opencode_url
+    # The per-agent hint is already in the list above; this line is the
+    # opencode one-liner and only makes sense when opencode is what's missing.
+    if [ "$MISSING_OPENCODE" -eq 1 ]; then
+        e opencode_url
+    fi
     echo ""
     exit 1
 fi
 
 # A v1 opencode in PATH is detected only at run time (its `run -f` breaks the
-# plugin), so warn during installation instead of failing after a right click.
-if declare -F ask_ai_opencode_bin &>/dev/null && ! ask_ai_opencode_bin &>/dev/null; then
-    e opencode_v2_warning
+# CLI path, and v1 has no `acp` subcommand), so warn during installation
+# instead of failing after a right click. Irrelevant for other agents.
+if [ "$AGENT_BIN" = "opencode" ] && declare -F ask_ai_opencode_bin &>/dev/null; then
+    if ! ask_ai_opencode_bin &>/dev/null; then
+        e opencode_v2_warning
+    fi
 fi
 
 if ! command -v glow &>/dev/null; then

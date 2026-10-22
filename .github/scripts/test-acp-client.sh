@@ -11,8 +11,10 @@
 #   8. --idle-timeout cancels a silent agent instead of hanging forever
 #   9. --probe reports capabilities without starting a conversation
 #  10. --reuse-session stores and resumes sessions, with a new-session fallback
+#      and no replayed history in the new answer
 #  11. --permission ask: terminal prompt, safe deny when there is no terminal
 #  12. --trace records both directions of the conversation
+#  13. --context text blocks and a sane ASK_AI_ACP_IDLE_TIMEOUT
 
 set -euo pipefail
 
@@ -279,6 +281,15 @@ else
     fail "Resumed session produced no answer"
 fi
 
+# session/load replays the stored conversation: none of it belongs in this
+# answer (it would otherwise land in stdout, the clipboard and the saved .md).
+rc=$(run_client replay FAKE_ACP_LOAD=1 FAKE_ACP_REPLAY=1 -- --reuse-session --session-store "$STORE" "Second question again")
+if agent_log_has '"loaded_session"' && [ "$(cat "$TEST_DIR/out-replay.txt")" = "Hello from ACP" ]; then
+    pass "Replayed history stays out of the new answer"
+else
+    fail "Replayed history leaked into stdout: $(cat "$TEST_DIR/out-replay.txt")"
+fi
+
 rc=$(run_client reuse3 FAKE_ACP_LOAD=1 FAKE_ACP_LOAD_FAIL=1 -- --reuse-session --session-store "$STORE" "Third question")
 if agent_log_has '"new_session": true' && grep -qF 'Hello from ACP' "$TEST_DIR/out-reuse3.txt"; then
     pass "Expired session falls back to a new one"
@@ -335,6 +346,37 @@ if grep -q '^-> {"jsonrpc"' "$TEST_DIR/trace.log" \
     pass "Trace records both directions"
 else
     fail "Trace file missing traffic"
+fi
+
+# ------------------------------------------------------
+print_header "13. Context blocks and idle-timeout parsing"
+# ------------------------------------------------------
+DIRECTORY_CONTEXT=$'Directory listing of /tmp/demo:\n- notes.md'
+rc=$(run_client context -- --context "$DIRECTORY_CONTEXT" "What is in this folder?")
+if python3 - "$LOG_FILE" <<'PY'
+import json, sys
+entries = [json.loads(line) for line in open(sys.argv[1], encoding="utf-8") if line.strip()]
+blocks = next(entry["prompt"] for entry in entries if "prompt" in entry)
+assert blocks[0]["type"] == "text" and "Directory listing of /tmp/demo:" in blocks[0]["text"], blocks
+assert blocks[-1]["text"] == "What is in this folder?", blocks
+PY
+then
+    pass "--context is sent as the leading text block"
+else
+    fail "--context was not delivered: $(head -c 300 "$LOG_FILE")"
+fi
+
+# A typo in the timeout variable must not take the whole query down.
+rc=0
+: >"$LOG_FILE"
+env ASK_AI_ACP_IDLE_TIMEOUT=abc FAKE_ACP_LOG="$LOG_FILE" \
+    python3 "$CLIENT" --agent "$AGENT_CMD" --cwd "$TEST_DIR" "Timeout typo" \
+    >"$TEST_DIR/out-idle-env.txt" 2>"$TEST_DIR/err-idle-env.txt" || rc=$?
+if [ "$rc" -eq 0 ] && grep -q 'Hello from ACP' "$TEST_DIR/out-idle-env.txt" \
+    && grep -q 'ignoring ASK_AI_ACP_IDLE_TIMEOUT' "$TEST_DIR/err-idle-env.txt"; then
+    pass "A non-numeric ASK_AI_ACP_IDLE_TIMEOUT warns and falls back"
+else
+    fail "Bad idle timeout broke the run (rc=$rc): $(head -2 "$TEST_DIR/err-idle-env.txt")"
 fi
 
 # ------------------------------------------------------

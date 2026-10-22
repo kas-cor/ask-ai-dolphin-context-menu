@@ -152,6 +152,7 @@ nano ~/.ask_ai
 | `ASK_AI_PERMISSION` | `allow-read` | ACP tool permission policy: `allow-read` (read/search/fetch only), `ask` (y/N in the terminal for anything that changes files), `deny` |
 | `ASK_AI_ACP_REUSE` | unset | `1` resumes the previous session for the same agent and directory (`session/load`) |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Cancel the turn when no answer text arrives for this many seconds |
+| `ASK_AI_ACP_SESSION_STORE` | `~/.cache/ask-ai/acp-sessions.json` | Where resumed session ids are remembered |
 | `ASK_AI_ACP_VERBOSE` | unset | `1` prints agent thoughts and tool calls on stderr |
 | `ASK_AI_ACP_TRACE` | unset | Log JSON-RPC traffic to this file |
 | `ASK_AI_ACP` | unset | Legacy alias: `0` selects the CLI path (same as `ASK_AI_HARNESS=cli`) |

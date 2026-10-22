@@ -431,6 +431,11 @@ run_agent() {
     if [ "$ACP_MODE" -eq 1 ]; then
         ACP_ARGS=("$ACP_CLIENT" --cwd "$ACP_CWD" --mode "$MODE"
             --permission "${ASK_AI_PERMISSION:-allow-read}")
+        # A selected directory has no file to attach; its non-recursive listing
+        # goes along as a text block, the way the CLI prompt carries it.
+        if [ -n "$DIR_CONTEXT" ]; then
+            ACP_ARGS+=(--context "$DIR_CONTEXT")
+        fi
         if [ -n "$ACP_MODEL_VALUE" ]; then
             ACP_ARGS+=(--model "$ACP_MODEL_VALUE")
         fi

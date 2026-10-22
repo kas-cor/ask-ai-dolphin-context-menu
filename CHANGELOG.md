@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- **ACP is the default harness** — queries run through `ask-ai-acp-client.py` and any agent that speaks the Agent Client Protocol: `ASK_AI_AGENT` picks one from the registry (`opencode` default, `gemini`, `claude`, `codex`, `qwen`, `goose`, `copilot`), `ASK_AI_AGENT_CMD` takes any other command line, and a missing binary is reported together with its install command. Model / effort / mode map onto the agent's own config options (mode names are translated, e.g. Codex `read-only` for `plan`), model / effort / mode map onto the agent's own config options, selected files become `resource_link` blocks, tool permissions are denied by default except reads, and only the answer text reaches stdout so glow, `.md` saving and script detection keep working. `ASK_AI_AGENT_CMD`, `ASK_AI_PERMISSION` (`allow-read` / `ask` / `deny`), `ASK_AI_ACP_REUSE` (resume the previous session), `ASK_AI_ACP_VERBOSE`, `ASK_AI_ACP_TRACE` and `ASK_AI_ACP_IDLE_TIMEOUT` tune it; `ASK_AI_HARNESS=cli` (or the legacy `ASK_AI_ACP=0`) keeps the old `opencode run` path, and `--probe` prints what an agent advertises
+- **ACP is the default harness** — queries run through `ask-ai-acp-client.py` and any agent that speaks the Agent Client Protocol: `ASK_AI_AGENT` picks one from the registry (`opencode` default, `gemini`, `claude`, `codex`, `qwen`, `goose`, `copilot`), `ASK_AI_AGENT_CMD` takes any other command line, and a missing binary is reported together with its install command. Model / effort / mode map onto the agent's own config options (mode names are translated, e.g. Codex `read-only` for `plan`, Claude Code `acceptEdits` for `build`), selected files become `resource_link` blocks, a selected directory is described to the agent by its non-recursive listing, tool permissions are denied by default except reads, and only the answer text reaches stdout so glow, `.md` saving and script detection keep working. `ASK_AI_AGENT_CMD`, `ASK_AI_PERMISSION` (`allow-read` / `ask` / `deny`), `ASK_AI_ACP_REUSE` (resume the previous session), `ASK_AI_ACP_VERBOSE`, `ASK_AI_ACP_TRACE` and `ASK_AI_ACP_IDLE_TIMEOUT` tune it; `ASK_AI_HARNESS=cli` (or the legacy `ASK_AI_ACP=0`) keeps the old `opencode run` path, and `--probe` prints what an agent advertises
 
 ### Bug Fixes
 
@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Paths starting with `-` are no longer passed to `opencode -f` as flags; CRLF preset configs are parsed correctly
 - The model catalog for `ASK_AI_EFFORT` is cached for a day instead of being fetched on every query
 - The installer no longer keeps a second copy of the locale strings (it had already drifted), copies every shipped locale, escapes `$HOME` in the generated `.desktop`, and warns about `opencode` v1
+- The installer checks the binary of the agent it will actually run (`ASK_AI_AGENT` / `ASK_AI_AGENT_CMD`), so a gemini/claude/codex setup installs without the opencode CLI and is no longer warned about opencode v1
 
 ## [1.2.1](https://github.com/kas-cor/ask-ai-dolphin-context-menu/compare/v1.2.0...v1.2.1) (2026-10-12)
 

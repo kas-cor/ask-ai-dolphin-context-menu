@@ -7,6 +7,8 @@
 #   4. Installed .desktop: @HOME@ substituted, Exec quoted
 #   5. Installed layout: scripts, locales, ~/.ask_ai, shell rc line
 #   6. opencode v1 only → dedicated warning, installation still completes
+#   7. Dependency check follows ASK_AI_AGENT (no opencode needed for gemini)
+#   8. uninstall.sh removes only project files
 
 set -euo pipefail
 
@@ -188,7 +190,46 @@ else
 fi
 
 # ------------------------------------------------------
-print_header "6. uninstall.sh removes only project files"
+print_header "6. Dependency check follows ASK_AI_AGENT"
+# ------------------------------------------------------
+# ACP is the default harness and the agent is configurable, so an installation
+# with gemini (or claude, codex, …) must not demand the opencode CLI.
+BIN_GEMINI="$TEST_DIR/bin-gemini"
+mkdir -p "$BIN_GEMINI"
+printf '#!/bin/bash\nexit 0\n' >"$BIN_GEMINI/konsole"
+printf '#!/bin/bash\ncat\n' >"$BIN_GEMINI/glow"
+printf '#!/bin/bash\nexit 0\n' >"$BIN_GEMINI/gemini"
+chmod +x "$BIN_GEMINI"/*
+H_GEMINI="$TEST_DIR/home-gemini"
+rc=0
+out=$(run_install "$H_GEMINI" "$BIN_GEMINI" en_EN LANG=en_US.UTF-8 ASK_AI_AGENT=gemini) || rc=$?
+if [ "$rc" -eq 0 ] && [ -x "$H_GEMINI/.local/bin/ask-ai-dolphin.sh" ]; then
+    pass "Install completes with gemini and no opencode in PATH"
+else
+    fail "Installer still required opencode (rc=$rc): $(printf '%s' "$out" | tail -4 | tr '\n' ' ')"
+fi
+case "$out" in
+    *"opencode v2 not found"*) fail "opencode v2 warning shown for a gemini setup" ;;
+    *) pass "No opencode warning when another agent is selected" ;;
+esac
+
+# …and when that agent is missing, its own install hint is what the user sees.
+BIN_NOAGENT="$TEST_DIR/bin-noagent"
+mkdir -p "$BIN_NOAGENT"
+printf '#!/bin/bash\nexit 0\n' >"$BIN_NOAGENT/konsole"
+printf '#!/bin/bash\ncat\n' >"$BIN_NOAGENT/glow"
+chmod +x "$BIN_NOAGENT"/*
+H_GEMINI_MISSING="$TEST_DIR/home-gemini-missing"
+rc=0
+out=$(run_install "$H_GEMINI_MISSING" "$BIN_NOAGENT" en_EN LANG=en_US.UTF-8 ASK_AI_AGENT=gemini) || rc=$?
+if [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -qF 'npm install -g @google/gemini-cli'; then
+    pass "Missing agent fails the install with its own install hint"
+else
+    fail "Missing gemini was not reported properly (rc=$rc): $(printf '%s' "$out" | tail -4 | tr '\n' ' ')"
+fi
+
+# ------------------------------------------------------
+print_header "7. uninstall.sh removes only project files"
 # ------------------------------------------------------
 H7="$TEST_DIR/home-uninstall"
 run_install "$H7" "$BIN_V2" en_EN LANG=en_US.UTF-8 >/dev/null 2>&1 || true

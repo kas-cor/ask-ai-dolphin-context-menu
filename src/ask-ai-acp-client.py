@@ -37,6 +37,9 @@ from urllib.parse import quote
 PROTOCOL_VERSION = 1
 DEFAULT_AGENT = "opencode acp"
 HANDSHAKE_TIMEOUT = 60.0
+# Some agents retry a failing provider without sending a single chunk; stop
+# waiting after this many seconds so the terminal does not look frozen.
+DEFAULT_IDLE_TIMEOUT = 180.0
 # Tool calls that only read: safe to auto-approve when the policy allows it.
 READ_ONLY_KINDS = {"read", "search", "fetch", "think"}
 # Agents name their modes differently (Codex: read-only/auto, Claude Code:
@@ -44,7 +47,9 @@ READ_ONLY_KINDS = {"read", "search", "fetch", "think"}
 # first mode the agent actually offers instead of failing the query.
 MODE_ALIASES = {
     "plan": ("plan", "read-only", "readonly", "suggest", "dontAsk", "default"),
-    "build": ("build", "auto", "acceptEdits", "full-access", "edit", "default"),
+    # Claude Code's "acceptEdits" applies changes without asking, which is what
+    # "build" means here; its "auto" is still a prompting mode.
+    "build": ("build", "acceptEdits", "auto", "full-access", "edit", "default"),
 }
 
 # Prompt shown for `--permission ask`. The dialog has its own locale files; the
@@ -100,6 +105,22 @@ class Trace:
 
 def log(message):
     print(f"acp: {message}", file=sys.stderr, flush=True)
+
+
+def env_seconds(name, default):
+    """Read a positive number of seconds from the environment, or fall back."""
+    raw = (os.environ.get(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        log(f"ignoring {name}={raw!r}: not a number")
+        return default
+    if value <= 0:
+        log(f"ignoring {name}={raw!r}: must be positive")
+        return default
+    return value
 
 
 class SessionStore:
@@ -244,6 +265,25 @@ class AgentProcess:
         self.trace.write("<-", payload)
         return payload
 
+    def drop_queued_updates(self):
+        """Forget queued session/update notifications, keep everything else.
+
+        session/load replays the previous conversation as notifications before
+        it answers; those updates describe history, not this turn's answer.
+        """
+        kept = []
+        while True:
+            try:
+                entry = self._incoming.get_nowait()
+            except queue.Empty:
+                break
+            kind, payload = entry
+            if kind == "msg" and payload.get("method") == "session/update":
+                continue
+            kept.append(entry)
+        for entry in kept:
+            self._incoming.put(entry)
+
     def terminate(self):
         if not self.proc:
             return
@@ -301,6 +341,7 @@ class Client:
         self.config_options = []
         self.stop_reason = None
         self._streamed = 0
+        self._replaying = False
         self.auth_methods = []
         self.interrupted = False
         self.exit_code = 0
@@ -362,6 +403,10 @@ class Client:
             self.store.forget(self.args.agent, self.args.cwd)
             return None
         result.setdefault("sessionId", session_id)
+        # The agent may have replayed the stored conversation before answering:
+        # that history belongs to the previous query, never to this answer.
+        self._replaying = True
+        self.agent.drop_queued_updates()
         if self.args.verbose:
             log(f"resumed session {session_id[:12]}…")
         return result
@@ -426,7 +471,11 @@ class Client:
         return value
 
     def prompt_blocks(self):
-        blocks = [{"type": "text", "text": self.args.query}]
+        blocks = []
+        for extra in self.args.context:
+            if extra.strip():
+                blocks.append({"type": "text", "text": extra})
+        blocks.append({"type": "text", "text": self.args.query})
         for path in self.args.files:
             if not os.path.isfile(path):
                 log(f"attachment skipped (not a file): {path}")
@@ -443,6 +492,11 @@ class Client:
     # --- prompt turn ---------------------------------------------------
 
     def run_prompt(self):
+        # Whatever session/load or the config calls left in the queue is replayed
+        # history: dropping it keeps stdout (and the saved .md) to this answer.
+        if self._replaying:
+            self.agent.drop_queued_updates()
+            self._replaying = False
         self.agent.send(
             {
                 "jsonrpc": "2.0",
@@ -500,6 +554,8 @@ class Client:
         update = params.get("update") or {}
         kind = update.get("sessionUpdate")
         if kind == "agent_message_chunk":
+            if self._replaying:
+                return
             text = (update.get("content") or {}).get("text", "")
             if text:
                 sys.stdout.write(text)
@@ -669,8 +725,9 @@ def parse_args(argv):
                         help="file remembering session ids (default: ~/.cache/ask-ai/acp-sessions.json)")
     parser.add_argument("--probe", action="store_true",
                         help="print the agent's capabilities as JSON and exit")
-    parser.add_argument("--idle-timeout", type=float,
-                        default=float(os.environ.get("ASK_AI_ACP_IDLE_TIMEOUT") or 180),
+    parser.add_argument("--context", action="append", default=[], metavar="TEXT",
+                        help="extra text block sent before the question (e.g. a directory listing)")
+    parser.add_argument("--idle-timeout", type=float, default=None,
                         help="cancel when no answer text arrives for this many seconds (default: 180)")
     parser.add_argument("--trace", default=os.environ.get("ASK_AI_ACP_TRACE") or None,
                         help="append JSON-RPC traffic to this file")
@@ -678,6 +735,11 @@ def parse_args(argv):
     parser.add_argument("query", nargs="?", help="question to ask (omitted with --probe)")
     parser.add_argument("files", nargs="*", help="files attached as resource links")
     args = parser.parse_args(argv)
+    if args.idle_timeout is None:
+        args.idle_timeout = env_seconds("ASK_AI_ACP_IDLE_TIMEOUT", DEFAULT_IDLE_TIMEOUT)
+    elif args.idle_timeout <= 0:
+        log(f"ignoring --idle-timeout {args.idle_timeout}: must be positive")
+        args.idle_timeout = DEFAULT_IDLE_TIMEOUT
     if not args.probe and not args.query:
         parser.error("a query is required unless --probe is used")
     return args

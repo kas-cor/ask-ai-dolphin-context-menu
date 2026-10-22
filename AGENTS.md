@@ -69,6 +69,7 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 | `ASK_AI_ACP_REUSE` | unset | `1` resumes the stored session (`session/load`) for the same agent + cwd |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Cancel a turn when no answer text arrives for this many seconds |
 | `ASK_AI_ACP_VERBOSE` / `ASK_AI_ACP_TRACE` | unset | Thoughts and tool calls on stderr / JSON-RPC log file |
+| `ASK_AI_ACP_SESSION_STORE` | `~/.cache/ask-ai/acp-sessions.json` | Where reused session ids are remembered |
 | `ASK_AI_ACP` | unset | Legacy alias: `0` = `ASK_AI_HARNESS=cli` |
 
 `~/.ask_ai` is sourced by the entry script (GUI path) as well as by the shell rc (`ask` / `askr`): the desktop session does not source rc files.

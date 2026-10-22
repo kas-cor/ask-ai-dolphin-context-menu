@@ -10,6 +10,7 @@ network, an API key or a real harness. Behaviour is selected with env vars:
   FAKE_ACP_NO_OPTIONS "1" → session/new without model/effort/mode options
   FAKE_ACP_LOAD       "1" → advertise loadSession and accept session/load
   FAKE_ACP_LOAD_FAIL  "1" → make session/load fail (expired session)
+  FAKE_ACP_REPLAY     "1" → replay old chunks on session/load, as real agents do
 """
 
 import json
@@ -24,6 +25,7 @@ NO_OPTIONS = os.environ.get("FAKE_ACP_NO_OPTIONS") == "1"
 MODE_VALUES = [v for v in (os.environ.get("FAKE_ACP_MODES") or "plan,build").split(",") if v]
 LOAD_SESSION = os.environ.get("FAKE_ACP_LOAD") == "1"
 LOAD_FAIL = os.environ.get("FAKE_ACP_LOAD_FAIL") == "1"
+REPLAY = os.environ.get("FAKE_ACP_REPLAY") == "1"
 SESSION_ID = "sess_fake_1"
 
 
@@ -230,6 +232,17 @@ def main():
                     }
                 )
                 continue
+            if REPLAY:
+                # Real agents replay the stored conversation as updates before
+                # answering session/load; the client must not print that back.
+                notify(
+                    {
+                        "sessionUpdate": "user_message_chunk",
+                        "content": {"type": "text", "text": "previous question"},
+                    }
+                )
+                chunk("OLD-HISTORY ")
+                chunk("FROM PREVIOUS TURN")
             send(
                 {
                     "jsonrpc": "2.0",

@@ -152,6 +152,7 @@ nano ~/.ask_ai
 | `ASK_AI_PERMISSION` | `allow-read` | Политика разрешений ACP: `allow-read` (только чтение/поиск/загрузка), `ask` (y/N в терминале для инструментов, меняющих файлы), `deny` |
 | `ASK_AI_ACP_REUSE` | пусто | `1` — продолжать прошлую сессию для того же агента и каталога (`session/load`) |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Отменить ход, если текст ответа не приходит столько секунд |
+| `ASK_AI_ACP_SESSION_STORE` | `~/.cache/ask-ai/acp-sessions.json` | Где запоминаются id сессий для продолжения |
 | `ASK_AI_ACP_VERBOSE` | пусто | `1` — мысли и вызовы инструментов агента в stderr |
 | `ASK_AI_ACP_TRACE` | пусто | Писать JSON-RPC обмен в файл |
 | `ASK_AI_ACP` | пусто | Старый алиас: `0` выбирает путь CLI (то же, что `ASK_AI_HARNESS=cli`) |
