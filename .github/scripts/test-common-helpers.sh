@@ -140,6 +140,43 @@ else
     fail "Expected en_EN, got '$loc'"
 fi
 
+# 1k-1n. Documented full forms must work (regression: lower-casing "ru_RU"
+# produced "ru_ru" and fell through to LANG).
+export LANG="en_US.UTF-8"
+export ASK_AI_LOCALE="ru_RU"
+loc=$(ask_ai_detect_locale)
+if [ "$loc" = "ru_RU" ]; then
+    pass "ASK_AI_LOCALE=ru_RU → ru_RU"
+else
+    fail "ASK_AI_LOCALE=ru_RU expected ru_RU, got '$loc'"
+fi
+
+export ASK_AI_LOCALE="RU_RU"
+loc=$(ask_ai_detect_locale)
+if [ "$loc" = "ru_RU" ]; then
+    pass "ASK_AI_LOCALE=RU_RU → ru_RU"
+else
+    fail "ASK_AI_LOCALE=RU_RU expected ru_RU, got '$loc'"
+fi
+
+export ASK_AI_LOCALE="ru-RU"
+loc=$(ask_ai_detect_locale)
+if [ "$loc" = "ru_RU" ]; then
+    pass "ASK_AI_LOCALE=ru-RU → ru_RU"
+else
+    fail "ASK_AI_LOCALE=ru-RU expected ru_RU, got '$loc'"
+fi
+
+# Explicit en_EN must win over a Russian LANG (used to be inverted).
+export ASK_AI_LOCALE="en_EN"
+export LANG="ru_RU.UTF-8"
+loc=$(ask_ai_detect_locale)
+if [ "$loc" = "en_EN" ]; then
+    pass "ASK_AI_LOCALE=en_EN overrides LANG=ru_RU"
+else
+    fail "ASK_AI_LOCALE=en_EN expected en_EN, got '$loc'"
+fi
+
 # Restore env
 if [ -n "$_old_lang" ]; then
     export LANG="$_old_lang"
@@ -291,6 +328,34 @@ else
 fi
 chmod 644 "$TEST_DIR/secret.txt"
 
+# 3o/3p. Fallback without file(1) — used to classify every file as binary
+# because `grep -q $'\0'` degenerates to an empty pattern.
+NOFILE_BIN="$TEST_DIR/nofile-bin"
+mkdir -p "$NOFILE_BIN"
+for tool in od head stat grep cat tr wc; do
+    if command -v "$tool" &>/dev/null; then
+        ln -sf "$(command -v "$tool")" "$NOFILE_BIN/$tool"
+    fi
+done
+_old_path="$PATH"
+export PATH="$NOFILE_BIN"
+if ! command -v file &>/dev/null; then
+    pass "file(1) hidden from PATH for the fallback test"
+else
+    fail "file(1) still reachable — fallback not exercised"
+fi
+if ask_ai_is_text_file "$TEST_DIR/text.txt"; then
+    pass "No file(1): plain text still detected"
+else
+    fail "No file(1): plain text was misdetected as binary"
+fi
+if ask_ai_is_text_file "$TEST_DIR/binary.bin"; then
+    fail "No file(1): binary with NUL detected as text"
+else
+    pass "No file(1): binary with NUL rejected"
+fi
+export PATH="$_old_path"
+
 # ======================================================
 print_header "4. ask_ai_file_size"
 # ======================================================
@@ -424,6 +489,23 @@ if [ "$count" -eq 1 ]; then
     pass "Dir with space in name → works correctly"
 else
     fail "Expected 1 entry, got $count"
+fi
+
+# 5g. The helper must return 0: callers do `DIR_CONTEXT+=$(ask_ai_dir_listing ...)`
+# under `set -e`, so a non-zero status aborts the runner.
+list_rc=0
+ask_ai_dir_listing "$TEST_DIR/list_a" >/dev/null || list_rc=$?
+if [ "$list_rc" -eq 0 ]; then
+    pass "ask_ai_dir_listing returns 0"
+else
+    fail "ask_ai_dir_listing returned $list_rc"
+fi
+
+# 5h. Non-existent directory → empty output, success
+if listing=$(ask_ai_dir_listing "$TEST_DIR/does-not-exist") && [ -z "$listing" ]; then
+    pass "Missing directory → empty listing"
+else
+    fail "Missing directory should return nothing and succeed"
 fi
 
 # ======================================================

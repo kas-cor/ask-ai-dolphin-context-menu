@@ -21,9 +21,16 @@ jobs:
           bash -n uninstall.sh
           echo "All shell scripts OK"
 
+      - name: ShellCheck
+        run: |
+          sudo apt-get install -y shellcheck
+          shellcheck -S warning -e SC2088 src/*.sh install.sh uninstall.sh .github/scripts/*.sh
+          echo "ShellCheck OK"
+
       - name: Python syntax check
         run: |
           python3 -m py_compile src/ask-ai-dolphin-dialog.py
+          python3 -m py_compile .github/scripts/test-dialog-i18n.py
           echo "Python syntax OK"
 
       - name: Locale files validation
@@ -48,6 +55,21 @@ jobs:
         run: |
           bash .github/scripts/test-common-helpers.sh
           echo "Common helpers OK"
+
+      - name: Dialog locale & history test
+        run: |
+          python3 .github/scripts/test-dialog-i18n.py
+          echo "Dialog locale/history OK"
+
+      - name: Entry point dialog & terminal test
+        run: |
+          bash .github/scripts/test-entry-dialog.sh
+          echo "Entry point OK"
+
+      - name: Installer test (sandboxed HOME)
+        run: |
+          bash .github/scripts/test-install.sh
+          echo "Installer OK"
 
       - name: Runner save & script execution test
         run: |

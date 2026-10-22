@@ -11,6 +11,12 @@
 #   8. ASK_AI_AUTO_EXEC decision matrix
 #   9. ask-ai-common.sh helpers (text file, size)
 #  10. Attachment flag building limits
+#  11. Entry point uses terminal fallback + RU presets
+#  12. opencode v2: effort as model variant
+#  13. Script save: opencode v2 response shapes (e2e)
+#  14. opencode v2 resolver (v1 in PATH must be skipped)
+#  15. Failure handling: no .md on error, bad limits, "-" paths, pause mode
+#  16. ~/.ask_ai reaches the runner when Konsole drops the launcher's env
 
 set -euo pipefail
 
@@ -393,6 +399,7 @@ else
 fi
 
 # ask_ai_apply_effort return-code contract
+# shellcheck disable=SC1090
 source "$COMMON"
 effort_rc() { local rc=0; ask_ai_apply_effort "$1" "$2" >/dev/null 2>&1 || rc=$?; echo "$rc"; }
 
@@ -448,7 +455,10 @@ print_header "13. Script save: opencode v2 response shapes (e2e)"
 
 SHIM_DIR="$TEST_DIR/opencode-shim"
 FAKE_SAVE_DIR="$TEST_DIR/fake-save"
-mkdir -p "$SHIM_DIR" "$FAKE_SAVE_DIR"
+# Isolated HOME: the runner reads ~/.ask_ai, and a developer's real file must
+# not change the outcome of these tests.
+FAKE_HOME="$TEST_DIR/fake-home"
+mkdir -p "$SHIM_DIR" "$FAKE_SAVE_DIR" "$FAKE_HOME"
 
 cat > "$SHIM_DIR/opencode" <<'SHIM'
 #!/bin/bash
@@ -458,20 +468,24 @@ if [ "${1:-}" = "--version" ]; then
     echo "v2.0.27"
     exit 0
 fi
+if [ -n "${FAKE_ARGS:-}" ]; then
+    printf '%s\n' "$@" >>"$FAKE_ARGS"
+fi
 if [ -n "${FAKE_RESPONSE:-}" ]; then
     cat "$FAKE_RESPONSE"
 fi
-exit 0
+exit "${FAKE_EXIT:-0}"
 SHIM
 chmod +x "$SHIM_DIR/opencode"
 
 printf 'print("hi")\n' > "$TEST_DIR/attach-sample.py"
 
-run_fake_runner() {  # $1 = canned response file, $2 = label
+run_fake_runner() {  # $1 = canned response file, $2 = label, [$3 = file to attach]
+    local file="${3:-$TEST_DIR/attach-sample.py}"
     rm -f "$FAKE_SAVE_DIR"/*
-    FAKE_RESPONSE="$1" PATH="$SHIM_DIR:$PATH" \
+    FAKE_RESPONSE="$1" PATH="$SHIM_DIR:$PATH" ASK_AI_LOCALE=en_EN HOME="$FAKE_HOME" \
         GLOW_DISABLED=1 ASK_AI_AUTO_EXEC=0 ASK_AI_SAVE_DIR="$FAKE_SAVE_DIR" \
-        bash "$RUNNER_FILE" "test query" "$TEST_DIR/attach-sample.py" \
+        bash "$RUNNER_FILE" "test query" "$file" \
         </dev/null >"$TEST_DIR/fake-run-$2.log" 2>&1
 }
 
@@ -586,6 +600,7 @@ EOF
 chmod +x "$R14/v1bin/opencode" "$R14/v2bin/opencode"
 cp "$R14/v2bin/opencode" "$R14/home/.opencode/bin/opencode"
 
+# shellcheck disable=SC1090
 source "$COMMON"
 
 # A: v1 sits earlier in PATH than v2 → v2 must still win
@@ -624,6 +639,138 @@ if grep -qF 'LBL_ERR_OPENCODE_V2' "$RUNNER_FILE"; then
     pass "Runner has a dedicated 'v2 required' error message"
 else
     fail "Runner missing LBL_ERR_OPENCODE_V2 handling"
+fi
+
+# --------------------------------
+print_header "15. Failure handling and terminal-mode differences"
+# --------------------------------
+
+# --- 15a. opencode fails → a partial answer must not be saved as a normal .md
+printf 'partial answer\n' > "$TEST_DIR/resp-partial.txt"
+FAKE_EXIT=1 run_fake_runner "$TEST_DIR/resp-partial.txt" fail
+if [ -z "$(find "$FAKE_SAVE_DIR" -maxdepth 1 -type f -name '*.md')" ]; then
+    pass "Failed run leaves no .md behind"
+else
+    fail "Failed run saved a .md"
+fi
+if grep -qF 'opencode exited with an error' "$TEST_DIR/fake-run-fail.log"; then
+    pass "Failed run reports the opencode error"
+else
+    fail "Missing opencode failure message"
+fi
+
+# --- 15b. Non-numeric attachment limits must not disable attachments
+printf 'ok\n' > "$TEST_DIR/resp-ok.txt"
+ASK_AI_MAX_ATTACH_BYTES=abc ASK_AI_MAX_ATTACH_FILES=xyz \
+    run_fake_runner "$TEST_DIR/resp-ok.txt" badlimits
+if grep -qF 'Attached files:' "$TEST_DIR/fake-run-badlimits.log"; then
+    pass "Bad ASK_AI_MAX_ATTACH_* falls back to defaults (file still attached)"
+else
+    fail "Bad limits silently dropped the attachment"
+fi
+if grep -q 'integer expression expected' "$TEST_DIR/fake-run-badlimits.log"; then
+    fail "Bad limits leak shell errors to the user"
+else
+    pass "Bad limits produce no shell errors"
+fi
+
+# --- 15c. A path starting with "-" must not reach opencode as a flag
+DASH_DIR="$TEST_DIR/dash-dir"
+mkdir -p "$DASH_DIR"
+printf 'hello\n' > "$DASH_DIR/-dash.txt"
+ARG_LOG="$TEST_DIR/args-dash.log"
+: >"$ARG_LOG"
+( cd "$DASH_DIR" && FAKE_ARGS="$ARG_LOG" run_fake_runner "$TEST_DIR/resp-ok.txt" dash "-dash.txt" )
+attach_arg=$(awk '$0 == "-f" { getline; print; exit }' "$ARG_LOG")
+if [ "$attach_arg" = "-dash.txt" ]; then
+    fail "Leading-dash path passed to opencode verbatim (flag injection)"
+else
+    pass "Leading-dash path is not passed verbatim"
+fi
+if [ "$attach_arg" = "$DASH_DIR/-dash.txt" ]; then
+    pass "Leading-dash path rewritten to an absolute path"
+else
+    fail "Expected $DASH_DIR/-dash.txt after -f, got '${attach_arg:-nothing}'"
+fi
+
+# --- 15d. "Press Enter to close" only in a terminal window (ASK_AI_PAUSE)
+run_fake_runner "$TEST_DIR/resp-ok.txt" inline
+if grep -qF '✅ Done.' "$TEST_DIR/fake-run-inline.log" \
+    && ! grep -qF 'Press Ctrl+C' "$TEST_DIR/fake-run-inline.log"; then
+    pass "Inline run (ask/askr) returns without asking for Enter"
+else
+    fail "Inline run still prints the window-close hint"
+fi
+ASK_AI_PAUSE=1 run_fake_runner "$TEST_DIR/resp-ok.txt" pause
+if grep -qF 'Press Ctrl+C or Enter to close' "$TEST_DIR/fake-run-pause.log"; then
+    pass "Terminal window (ASK_AI_PAUSE=1) keeps the close hint"
+else
+    fail "Terminal window lost the close hint"
+fi
+
+# --------------------------------
+print_header "16. ~/.ask_ai reaches the runner alone (Konsole env drop)"
+# --------------------------------
+# Konsole hands `-e cmd` to an already running instance, so the session that
+# runs the query inherits that instance's environment, not the one the entry
+# script set up. Every case below therefore runs with `env -i`: only the file
+# itself can provide the settings the docs promise for the right-click menu.
+FILE_SAVE_DIR="$TEST_DIR/file-save-dir"
+DOT_ASK_AI="$FAKE_HOME/.ask_ai"
+cat > "$DOT_ASK_AI" <<EOF
+# Konsole drops the launcher environment: the runner reads this file itself.
+export ASK_AI_MODEL="opencode/model-from-file"
+export ASK_AI_SAVE_DIR="$FILE_SAVE_DIR"
+EOF
+
+CLEAN_ENV=(env -i HOME="$FAKE_HOME" PATH="$SHIM_DIR:/usr/bin:/bin"
+    FAKE_RESPONSE="$TEST_DIR/resp-ok.txt" GLOW_DISABLED=1
+    ASK_AI_LOCALE=en_EN ASK_AI_AUTO_EXEC=0)
+
+# --- 16a. Model from ~/.ask_ai is used with no ASK_AI_MODEL in the env
+CLEAN_ARGS="$TEST_DIR/args-clean-env.log"
+: > "$CLEAN_ARGS"
+"${CLEAN_ENV[@]}" FAKE_ARGS="$CLEAN_ARGS" \
+    bash "$RUNNER_FILE" "clean env query" "$TEST_DIR/attach-sample.py" \
+    </dev/null >"$TEST_DIR/fake-run-cleanenv.log" 2>&1
+if grep -qxF 'opencode/model-from-file' "$CLEAN_ARGS"; then
+    pass "ASK_AI_MODEL from ~/.ask_ai applies when the session env is dropped"
+else
+    fail "Model from ~/.ask_ai was not used (args: $(tr '\n' ' ' < "$CLEAN_ARGS"))"
+fi
+
+# --- 16b. Save dir from ~/.ask_ai is honoured too
+if find "$FILE_SAVE_DIR" -maxdepth 1 -type f -name '*.md' | grep -q .; then
+    pass "ASK_AI_SAVE_DIR from ~/.ask_ai saves the response"
+else
+    fail "ASK_AI_SAVE_DIR from ~/.ask_ai was ignored"
+fi
+
+# --- 16c. An explicit environment value still wins over the file
+: > "$CLEAN_ARGS"
+"${CLEAN_ENV[@]}" FAKE_ARGS="$CLEAN_ARGS" ASK_AI_MODEL="opencode/model-from-env" \
+    bash "$RUNNER_FILE" "explicit model" "$TEST_DIR/attach-sample.py" \
+    </dev/null >"$TEST_DIR/fake-run-explicit-model.log" 2>&1
+if grep -qxF 'opencode/model-from-env' "$CLEAN_ARGS" \
+    && ! grep -qxF 'opencode/model-from-file' "$CLEAN_ARGS"; then
+    pass "Explicit ASK_AI_MODEL overrides ~/.ask_ai"
+else
+    fail "Explicit ASK_AI_MODEL was overridden by ~/.ask_ai"
+fi
+
+# --- 16d. A broken ~/.ask_ai must not abort the query
+cat > "$DOT_ASK_AI" <<'EOF'
+if then
+EOF
+"${CLEAN_ENV[@]}" \
+    bash "$RUNNER_FILE" "broken config" "$TEST_DIR/attach-sample.py" \
+    </dev/null >"$TEST_DIR/fake-run-badcfg.log" 2>&1
+if grep -qF '✅ Done.' "$TEST_DIR/fake-run-badcfg.log" \
+    && grep -qF 'ok' "$TEST_DIR/fake-run-badcfg.log" \
+    && ! grep -qiF 'syntax error' "$TEST_DIR/fake-run-badcfg.log"; then
+    pass "Broken ~/.ask_ai is ignored without breaking the query"
+else
+    fail "Broken ~/.ask_ai broke the runner: $(tail -3 "$TEST_DIR/fake-run-badcfg.log" | tr '\n' ' ')"
 fi
 
 # --------------------------------
