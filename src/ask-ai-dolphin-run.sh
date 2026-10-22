@@ -103,6 +103,8 @@ LBL_MODEL_DEFAULT="${runner_lbl_model_default:-agent default}"
 LBL_AGENT_FAILED="${runner_lbl_agent_failed:-agent exited with an error (code %s)}"
 LBL_AGENT_AUTH="${runner_lbl_agent_auth:-The agent requires authentication — run its login command in a terminal, then retry.}"
 LBL_ACP_UNAVAILABLE="${runner_lbl_acp_unavailable:-ACP requested (ASK_AI_ACP=1) but the client or python3 is missing — using the opencode CLI.}"
+LBL_UNKNOWN_AGENT="${runner_lbl_unknown_agent:-Unknown ASK_AI_AGENT '%s' — falling back to opencode.}"
+LBL_AGENT_MISSING="${runner_lbl_agent_missing:-Agent '%s' not found. Install: %s}"
 FALLBACK_QUERY="${runner_fallback_query:-Explain these files}"
 
 # Attachment limits
@@ -267,6 +269,39 @@ if [ "$WANT_ACP" -eq 1 ]; then
     fi
 fi
 
+# --- Which ACP agent ---
+# ASK_AI_AGENT=opencode|gemini|claude|codex|qwen|goose|copilot resolves through
+# the registry in ask-ai-common.sh; ASK_AI_AGENT_CMD wins over it and accepts
+# any command line, so a harness missing from the table still works.
+AGENT_ID="${ASK_AI_AGENT:-opencode}"
+AGENT_CMD="${ASK_AI_AGENT_CMD:-}"
+if [ "$ACP_MODE" -eq 1 ] && [ -z "$AGENT_CMD" ]; then
+    if declare -F ask_ai_agent_command &>/dev/null; then
+        AGENT_CMD=$(ask_ai_agent_command "$AGENT_ID" 2>/dev/null || true)
+    fi
+    if [ -z "$AGENT_CMD" ]; then
+        # shellcheck disable=SC2059
+        printf "${BOLD}${LABEL_YELLOW}${LBL_UNKNOWN_AGENT}${NC}\n" "$AGENT_ID"
+        AGENT_ID="opencode"
+        AGENT_CMD="opencode acp"
+    fi
+fi
+if [ "$ACP_MODE" -eq 1 ]; then
+    AGENT_BIN="${AGENT_CMD%% *}"
+    if ! command -v "$AGENT_BIN" &>/dev/null; then
+        AGENT_HINT=""
+        if declare -F ask_ai_agent_install_hint &>/dev/null; then
+            AGENT_HINT=$(ask_ai_agent_install_hint "$AGENT_ID" 2>/dev/null || true)
+        fi
+        # shellcheck disable=SC2059
+        printf "${BOLD}${ERR_RED}${LBL_AGENT_MISSING}${NC}\n" "$AGENT_BIN" "${AGENT_HINT:-$AGENT_ID}"
+        exit 1
+    fi
+    # Exported, so the client (and the trace) see the resolved command even
+    # when it came from the registry rather than the environment.
+    export ASK_AI_AGENT_CMD="$AGENT_CMD"
+fi
+
 # --- Check opencode (v2 required, CLI path only) ---
 # The GUI session PATH may resolve `opencode` to a system v1 build; v1 breaks
 # `run -f` (it swallows the prompt and dies with "File not found: <prompt>").
@@ -343,7 +378,8 @@ elif [ -n "${ASK_AI_EFFORT:-}" ]; then
 fi
 
 if [ "$ACP_MODE" -eq 1 ]; then
-    echo -e "${BOLD}${LBL_HARNESS}${NC} ${FILE_CYAN}ACP${NC} ${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
+    AGENT_LABEL="${ASK_AI_AGENT:-${AGENT_CMD%% *}}"
+    echo -e "${BOLD}${LBL_HARNESS}${NC} ${FILE_CYAN}ACP${NC} (${AGENT_LABEL}) ${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
 else
     echo -e "${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
 fi

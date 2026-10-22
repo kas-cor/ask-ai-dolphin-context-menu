@@ -88,6 +88,37 @@ ask_ai_file_size() {
     fi
 }
 
+# --- ACP agent registry -------------------------------------------------
+# Maps a short id onto the command that starts that agent as an ACP server.
+# ASK_AI_AGENT_CMD overrides the table entirely (the runner checks it first).
+# Returns 1 for an unknown id so the caller can warn and fall back.
+ask_ai_agent_command() {
+    case "${1:-opencode}" in
+        opencode)            printf '%s\n' "opencode acp" ;;
+        gemini)              printf '%s\n' "gemini --experimental-acp" ;;
+        claude|claude-code)  printf '%s\n' "claude-agent-acp" ;;
+        codex)               printf '%s\n' "codex-acp" ;;
+        qwen)                printf '%s\n' "qwen --acp" ;;
+        goose)               printf '%s\n' "goose acp" ;;
+        copilot)             printf '%s\n' "copilot --acp" ;;
+        *)                   return 1 ;;
+    esac
+}
+
+# How to install the agent behind an id (shown when the binary is missing).
+ask_ai_agent_install_hint() {
+    case "${1:-}" in
+        opencode) echo "curl -fsSL https://opencode.ai/v2/install | bash" ;;
+        gemini)   echo "npm install -g @google/gemini-cli" ;;
+        claude)   echo "npm install -g @agentclientprotocol/claude-agent-acp" ;;
+        codex)    echo "npm install -g @zed-industries/codex-acp" ;;
+        qwen)     echo "npm install -g @qwen-code/qwen-code" ;;
+        goose)    echo "https://block.github.io/goose" ;;
+        copilot)  echo "npm install -g @github/copilot" ;;
+        *)        return 1 ;;
+    esac
+}
+
 # Locate a usable opencode v2 binary and print its path.
 #
 # The GUI path (Dolphin → konsole -e) inherits the desktop session PATH, which

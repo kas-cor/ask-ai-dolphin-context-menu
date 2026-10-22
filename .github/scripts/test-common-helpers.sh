@@ -357,6 +357,41 @@ fi
 export PATH="$_old_path"
 
 # ======================================================
+print_header "3q. ACP agent registry"
+# ======================================================
+agent_case() {  # id expected
+    local got
+    got=$(ask_ai_agent_command "$1" 2>/dev/null)
+    if [ "$got" = "$2" ]; then
+        pass "agent '$1' → '$2'"
+    else
+        fail "agent '$1': expected '$2', got '${got:-<none>}'"
+    fi
+}
+agent_case opencode "opencode acp"
+agent_case gemini "gemini --experimental-acp"
+agent_case claude "claude-agent-acp"
+agent_case claude-code "claude-agent-acp"
+agent_case codex "codex-acp"
+agent_case qwen "qwen --acp"
+agent_case goose "goose acp"
+if ask_ai_agent_command "not-a-real-agent" >/dev/null 2>&1; then
+    fail "Unknown agent id should not resolve"
+else
+    pass "Unknown agent id → non-zero (caller warns and falls back)"
+fi
+if [ -n "$(ask_ai_agent_install_hint gemini)" ] && [ -n "$(ask_ai_agent_install_hint opencode)" ]; then
+    pass "Install hints exist for known agents"
+else
+    fail "Install hints missing"
+fi
+if ask_ai_agent_install_hint "bogus" >/dev/null 2>&1; then
+    fail "Unknown agent should have no install hint"
+else
+    pass "Unknown agent → no install hint"
+fi
+
+# ======================================================
 print_header "4. ask_ai_file_size"
 # ======================================================
 

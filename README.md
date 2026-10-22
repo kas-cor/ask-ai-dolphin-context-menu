@@ -147,7 +147,8 @@ nano ~/.ask_ai
 | `ASK_AI_THEME` | auto-detect (system palette) | Force UI theme: `dark` / `light` |
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
 | `ASK_AI_HARNESS` | `acp` | `acp` drives any [ACP](https://agentclientprotocol.com) agent; `cli` uses the legacy `opencode run` path |
-| `ASK_AI_AGENT_CMD` | `opencode acp` | ACP agent command line, e.g. `gemini --experimental-acp`, `claude-agent-acp`, `codex-acp` |
+| `ASK_AI_AGENT` | `opencode` | Agents from the built-in registry: `opencode`, `gemini`, `claude`, `codex`, `qwen`, `goose`, `copilot` |
+| `ASK_AI_AGENT_CMD` | unset | Any agent command line; overrides the registry (e.g. `npx -y some-acp-agent`) |
 | `ASK_AI_PERMISSION` | `allow-read` | ACP tool permission policy: `allow-read` (read/search/fetch only), `ask` (y/N in the terminal for anything that changes files), `deny` |
 | `ASK_AI_ACP_REUSE` | unset | `1` resumes the previous session for the same agent and directory (`session/load`) |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Cancel the turn when no answer text arrives for this many seconds |
@@ -177,10 +178,22 @@ See [Localization](#localization) for locale details. The theme auto-detects fro
 Queries go through ACP (Agent Client Protocol), so any harness that speaks it works out of the box — `opencode acp` is the default, and Gemini CLI, Claude Code, Codex, Qwen, Goose and others plug in with one variable:
 
 ```bash
-export ASK_AI_AGENT_CMD="gemini --experimental-acp"   # or claude-agent-acp, codex-acp, …
-export ASK_AI_PERMISSION="ask"                        # y/N before tools that change files
-export ASK_AI_HARNESS="cli"                           # legacy `opencode run` path
+export ASK_AI_AGENT="gemini"        # opencode (default), gemini, claude, codex, qwen, goose, copilot
+export ASK_AI_PERMISSION="ask"     # y/N before tools that change files
+export ASK_AI_HARNESS="cli"        # legacy `opencode run` path
 ```
+
+| `ASK_AI_AGENT` | Command it starts | Install |
+|---|---|---|
+| `opencode` | `opencode acp` | `curl -fsSL https://opencode.ai/v2/install \| bash` |
+| `gemini` | `gemini --experimental-acp` | `npm install -g @google/gemini-cli` |
+| `claude` | `claude-agent-acp` | `npm install -g @agentclientprotocol/claude-agent-acp` |
+| `codex` | `codex-acp` | `npm install -g @zed-industries/codex-acp` |
+| `qwen` | `qwen --acp` | `npm install -g @qwen-code/qwen-code` |
+| `goose` | `goose acp` | <https://block.github.io/goose> |
+| `copilot` | `copilot --acp` | `npm install -g @github/copilot` |
+
+A harness that is not in the table works through `ASK_AI_AGENT_CMD`; the runner only needs the binary on `PATH` and otherwise says so and prints the install command.
 
 What maps onto what:
 

@@ -63,7 +63,8 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 | `ASK_AI_THEME` | auto (palette / COLORFGBG) | Force UI theme: `dark` / `light` |
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
 | `ASK_AI_HARNESS` | `acp` | `acp` runs the query through `ask-ai-acp-client.py`; `cli` uses the legacy `opencode run` path |
-| `ASK_AI_AGENT_CMD` | `opencode acp` | ACP agent command line (`gemini --experimental-acp`, `claude-agent-acp`, `codex-acp`, …) |
+| `ASK_AI_AGENT` | `opencode` | Registry id: `opencode`, `gemini`, `claude`, `codex`, `qwen`, `goose`, `copilot` (`ask_ai_agent_command` in common.sh maps it) |
+| `ASK_AI_AGENT_CMD` | unset | Explicit agent command line; wins over the registry |
 | `ASK_AI_PERMISSION` | `allow-read` | `session/request_permission` policy: read/search/fetch allowed, everything else denied; `ask` prompts y/N on the terminal, `deny` refuses all |
 | `ASK_AI_ACP_REUSE` | unset | `1` resumes the stored session (`session/load`) for the same agent + cwd |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Cancel a turn when no answer text arrives for this many seconds |
@@ -130,4 +131,4 @@ Located in `.github/scripts/`, run via `.github/workflows/ci.yml`.
 | `test-runner-save.sh` | Shebang, slug, AUTO_EXEC matrix, common.sh, attach limits, failure paths, ACP switch |
 | `test-acp-client.sh` | ACP client against `fake-acp-agent.py`: streaming, attachments, config options, permissions, cancel, errors |
 
-CI pipeline: Shell syntax → ShellCheck → Python syntax → Locale validation → PyQt5 → Qt compat → ASK_AI_THEME → Common helpers → Dialog locale/history → Entry point → Installer → ACP client → Runner tests.
+CI pipeline: Shell syntax → ShellCheck → Python syntax → Locale validation → PyQt5 → Qt compat → ASK_AI_THEME → Common helpers (incl. agent registry) → Dialog locale/history → Entry point → Installer → ACP client → Runner tests.

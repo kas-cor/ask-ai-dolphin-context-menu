@@ -67,7 +67,8 @@ export ASK_AI_MODEL="opencode/mimo-v2.6-flash-free"
 # The runner speaks ACP (Agent Client Protocol) by default, so any harness
 # works: `opencode acp` out of the box, or Gemini CLI, Claude Code, Codex,
 # Qwen, Goose… via ASK_AI_AGENT_CMD.
-# export ASK_AI_AGENT_CMD="gemini --experimental-acp"
+# export ASK_AI_AGENT="gemini"          # opencode | gemini | claude | codex | qwen | goose | copilot
+# export ASK_AI_AGENT_CMD="npx -y my-acp-agent"   # overrides the registry
 # export ASK_AI_PERMISSION="ask"          # y/N before tools that change files
 # export ASK_AI_ACP_REUSE=1               # continue the previous session here
 # export ASK_AI_ACP_VERBOSE=1             # thoughts and tool calls on stderr

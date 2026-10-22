@@ -18,6 +18,7 @@
 #  15. Failure handling: no .md on error, bad limits, "-" paths, pause mode
 #  16. ~/.ask_ai reaches the runner when Konsole drops the launcher's env
 #  17. ACP harness: default path drives an agent without the opencode CLI
+#  18. Agent registry: id → command, install hints, ASK_AI_AGENT_CMD override
 
 set -euo pipefail
 
@@ -859,6 +860,52 @@ if grep -qF 'Harness:' "$TEST_DIR/fake-run-acp-alias.log"; then
     fail "ASK_AI_ACP=0 still used ACP"
 else
     pass "ASK_AI_ACP=0 (pre-1.4 alias) still selects the CLI path"
+fi
+
+# --------------------------------
+print_header "18. Agent registry and missing-agent handling"
+# --------------------------------
+rm -f "$FAKE_SAVE_DIR"/*
+rc=0
+env -u ASK_AI_AGENT_CMD ASK_AI_AGENT=gemini PATH="/usr/bin:/bin" HOME="$FAKE_HOME" \
+    ASK_AI_LOCALE=en_EN GLOW_DISABLED=1 ASK_AI_AUTO_EXEC=0 ASK_AI_SAVE_DIR="$FAKE_SAVE_DIR" \
+    bash "$RUNNER_FILE" "gemini query" "$TEST_DIR/attach-sample.py" \
+    </dev/null >"$TEST_DIR/fake-run-gemini-missing.log" 2>&1 || rc=$?
+if [ "$rc" -eq 1 ] && grep -qF "Agent 'gemini' not found" "$TEST_DIR/fake-run-gemini-missing.log"; then
+    pass "ASK_AI_AGENT with a missing binary fails with a clear message"
+else
+    fail "Missing agent handling wrong (rc=$rc): $(tail -2 "$TEST_DIR/fake-run-gemini-missing.log" | tr '\n' ' ')"
+fi
+if grep -qF 'npm install -g @google/gemini-cli' "$TEST_DIR/fake-run-gemini-missing.log"; then
+    pass "Missing agent message carries the install hint"
+else
+    fail "Install hint missing from the error"
+fi
+
+rc=0
+env -u ASK_AI_AGENT_CMD ASK_AI_AGENT=definitely-not-an-agent PATH="/usr/bin:/bin" \
+    HOME="$FAKE_HOME" ASK_AI_LOCALE=en_EN GLOW_DISABLED=1 \
+    bash "$RUNNER_FILE" "bogus query" "$TEST_DIR/attach-sample.py" \
+    </dev/null >"$TEST_DIR/fake-run-bogus-agent.log" 2>&1 || rc=$?
+if grep -qF "Unknown ASK_AI_AGENT 'definitely-not-an-agent'" "$TEST_DIR/fake-run-bogus-agent.log"; then
+    pass "Unknown agent id warns and falls back"
+else
+    fail "Unknown agent produced no warning (rc=$rc)"
+fi
+
+rm -f "$FAKE_SAVE_DIR"/*
+ASK_AI_AGENT=gemini \
+    ASK_AI_AGENT_CMD="python3 $SCRIPT_DIR/fake-acp-agent.py" \
+    FAKE_ACP_LOG="$TEST_DIR/acp-agent.log" \
+    PATH="/usr/bin:/bin" HOME="$FAKE_HOME" GLOW_DISABLED=1 ASK_AI_LOCALE=en_EN \
+    ASK_AI_AUTO_EXEC=0 ASK_AI_SAVE_DIR="$FAKE_SAVE_DIR" \
+    bash "$RUNNER_FILE" "override query" "$TEST_DIR/attach-sample.py" \
+    </dev/null >"$TEST_DIR/fake-run-agent-override.log" 2>&1
+if grep -qF 'Hello from ACP' "$TEST_DIR/fake-run-agent-override.log" \
+    && grep -qF '(gemini)' "$TEST_DIR/fake-run-agent-override.log"; then
+    pass "ASK_AI_AGENT_CMD overrides the registry entry"
+else
+    fail "Registry override not honoured: $(tail -3 "$TEST_DIR/fake-run-agent-override.log" | tr '\n' ' ')"
 fi
 
 # --------------------------------

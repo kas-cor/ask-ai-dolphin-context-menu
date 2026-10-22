@@ -147,7 +147,8 @@ nano ~/.ask_ai
 | `ASK_AI_THEME` | авто (палитра) | Тема: `dark` / `light` |
 | `TERMINAL` | пусто | Предпочитаемый терминал (приоритет над konsole) |
 | `ASK_AI_HARNESS` | `acp` | `acp` — любой [ACP](https://agentclientprotocol.com)-агент; `cli` — прежний путь `opencode run` |
-| `ASK_AI_AGENT_CMD` | `opencode acp` | Команда ACP-агента: `gemini --experimental-acp`, `claude-agent-acp`, `codex-acp`, … |
+| `ASK_AI_AGENT` | `opencode` | Агенты из встроенного реестра: `opencode`, `gemini`, `claude`, `codex`, `qwen`, `goose`, `copilot` |
+| `ASK_AI_AGENT_CMD` | пусто | Любая команда агента; важнее реестра (например, `npx -y some-acp-agent`) |
 | `ASK_AI_PERMISSION` | `allow-read` | Политика разрешений ACP: `allow-read` (только чтение/поиск/загрузка), `ask` (y/N в терминале для инструментов, меняющих файлы), `deny` |
 | `ASK_AI_ACP_REUSE` | пусто | `1` — продолжать прошлую сессию для того же агента и каталога (`session/load`) |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Отменить ход, если текст ответа не приходит столько секунд |
@@ -177,10 +178,22 @@ export ASK_AI_THEME="dark"
 Запросы идут через ACP (Agent Client Protocol), поэтому подходит любой харнесс, который его поддерживает: по умолчанию `opencode acp`, а Gemini CLI, Claude Code, Codex, Qwen, Goose подключаются одной переменной:
 
 ```bash
-export ASK_AI_AGENT_CMD="gemini --experimental-acp"   # или claude-agent-acp, codex-acp, …
-export ASK_AI_PERMISSION="ask"                        # y/N перед инструментами, меняющими файлы
-export ASK_AI_HARNESS="cli"                           # прежний путь `opencode run`
+export ASK_AI_AGENT="gemini"        # opencode (по умолчанию), gemini, claude, codex, qwen, goose, copilot
+export ASK_AI_PERMISSION="ask"     # y/N перед инструментами, меняющими файлы
+export ASK_AI_HARNESS="cli"        # прежний путь `opencode run`
 ```
+
+| `ASK_AI_AGENT` | Запускаемая команда | Установка |
+|---|---|---|
+| `opencode` | `opencode acp` | `curl -fsSL https://opencode.ai/v2/install \| bash` |
+| `gemini` | `gemini --experimental-acp` | `npm install -g @google/gemini-cli` |
+| `claude` | `claude-agent-acp` | `npm install -g @agentclientprotocol/claude-agent-acp` |
+| `codex` | `codex-acp` | `npm install -g @zed-industries/codex-acp` |
+| `qwen` | `qwen --acp` | `npm install -g @qwen-code/qwen-code` |
+| `goose` | `goose acp` | <https://block.github.io/goose> |
+| `copilot` | `copilot --acp` | `npm install -g @github/copilot` |
+
+Харнесс вне таблицы подключается через `ASK_AI_AGENT_CMD`: раннеру достаточно бинаря в `PATH`, иначе он сообщит об этом и подскажет команду установки.
 
 Что во что отображается:
 
