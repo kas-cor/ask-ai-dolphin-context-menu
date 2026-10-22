@@ -21,14 +21,23 @@ for f in ask-ai-common.sh ask-ai-dolphin.sh ask-ai-dolphin-run.sh ask-ai-dolphin
 done
 
 # --- Remove locale files installed by this project ---
-for f in en_EN ru_RU; do
-    if [ -f "$LOCALE_DIR/$f" ]; then
-        rm -v "$LOCALE_DIR/$f"
-    fi
-done
-# Remove locales dir only if empty
+# Detect them by a project-only key so that other languages (or other
+# software using ~/.local/bin/locales) are handled correctly.
 if [ -d "$LOCALE_DIR" ]; then
+    for f in "$LOCALE_DIR"/*; do
+        [ -f "$f" ] || continue
+        if grep -q '^dialog_ok_text=' "$f" 2>/dev/null; then
+            rm -v "$f"
+        fi
+    done
+    # Remove locales dir only if empty
     rmdir "$LOCALE_DIR" 2>/dev/null || true
+fi
+
+# --- Remove runtime cache (model catalog, dialog log) ---
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ask-ai"
+if [ -d "$CACHE_DIR" ]; then
+    rm -rv "$CACHE_DIR"
 fi
 
 # --- Remove service menu ---

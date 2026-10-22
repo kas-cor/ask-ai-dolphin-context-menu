@@ -10,16 +10,18 @@
 set -euo pipefail
 
 # --- Localization (bootstrap before common.sh is available) ---
+# LANG first, then an explicit CLI argument (ru_RU, RU, ru-RU, en_EN, …).
+# Unknown arguments keep the LANG-based detection instead of forcing English.
 DETECTED_LOCALE="en_EN"
+case "${LANG:-}" in
+    ru_RU*|ru_UA*|be_BY*|uk_UA*) DETECTED_LOCALE="ru_RU" ;;
+esac
 if [ -n "${1:-}" ]; then
     _arg_lower="${1,,}"
+    _arg_lower="${_arg_lower//-/_}"
     case "$_arg_lower" in
-        ru_RU|ru) DETECTED_LOCALE="ru_RU" ;;
-        *)        DETECTED_LOCALE="en_EN" ;;
-    esac
-else
-    case "${LANG:-}" in
-        ru_RU*|ru_UA*|be_BY*|uk_UA*) DETECTED_LOCALE="ru_RU" ;;
+        ru_ru|ru) DETECTED_LOCALE="ru_RU" ;;
+        en_en|en) DETECTED_LOCALE="en_EN" ;;
     esac
 fi
 
@@ -34,77 +36,25 @@ msg() {
     local var_name="install_${key}"
     local str="${!var_name:-}"
 
+    # Only the messages printed before the tarball is downloaded need an inline
+    # fallback; everything else comes from locales/* once they are sourced.
+    # (Keeping a full second copy here drifted from the locale files.)
     if [ -z "$str" ]; then
         case "$LOCALE" in
             ru_RU)
                 case "$key" in
-                    downloading)       str="📦 Загрузка проекта с GitHub..." ;;
-                    curl_required)     str="❌ Требуется curl. Установите: sudo pacman -S curl" ;;
-                    checking_deps)     str="🔍 Проверка зависимостей..." ;;
-                    missing_deps)      str="❌ Отсутствуют необходимые зависимости:" ;;
-                    install_them)      str="  Установите их:" ;;
-                    opencode_url)      str="    opencode v2: curl -fsSL https://opencode.ai/v2/install | bash" ;;
-                    glow_warning)      str="  ⚠️  glow не найден — форматирование Markdown недоступно" ;;
-                    glow_install)      str="       Установите: sudo pacman -S glow" ;;
-                    installing)        str="📦 Установка Ask AI Dolphin context menu..." ;;
-                    copying_scripts)   str="  → Копирование скриптов в %s" ;;
-                    installing_servicemenu) str="  → Установка сервис-меню в %s" ;;
-                    creating_config)   str="  → Создание конфига по умолчанию в %s" ;;
-                    config_exists)     str="  → Конфиг уже существует в %s (оставлен)" ;;
-                    creating_ask_ai)   str="  → Создание ~/.ask_ai с функциями терминала (ask / askr)" ;;
-                    ask_ai_exists)     str="  → ~/.ask_ai уже существует (оставлен)" ;;
-                    ask_ai_see_example) str="       Новые опции: см. example в репозитории (dot-ask_ai/dot-ask_ai.example)" ;;
-                    added_source)      str="  → Добавлено 'source ~/.ask_ai' в %s" ;;
-                    no_shell_config)   str="  ⚠️  Не удалось определить файл конфигурации оболочки." ;;
-                    add_manually)      str="       Добавьте эту строку вручную:" ;;
-                    add_manually_cmd)  str="         echo '[[ -f ~/.ask_ai ]] && . ~/.ask_ai' >> ~/.bashrc" ;;
-                    fish_note)         str="  ⚠️  Fish: функции ask/askr — bash/zsh. Добавьте обёртку вручную или используйте bash." ;;
-                    install_complete)  str="✅ Установка завершена!" ;;
-                    restart_dolphin)   str="Чтобы применить, перезапустите Dolphin: Ctrl+Shift+R" ;;
-                    restart_terminal)  str="Или из терминала: killall dolphin && dolphin --new-window &" ;;
-                    optional)          str="📝 Дополнительно:" ;;
-                    edit_presets)      str="  - Изменить пресеты:  nano %s" ;;
-                    set_model)         str="  - Сменить модель:    nano ~/.ask_ai  (изменить ASK_AI_MODEL)" ;;
-                    set_effort)        str="  - Уровень усилий:   nano ~/.ask_ai  (изменить ASK_AI_EFFORT)" ;;
-                    set_mode)          str="  - Режим работы:     nano ~/.ask_ai  (изменить ASK_AI_MODE)" ;;
-                    *)                 str="[msg_%s]" ;;
+                    downloading)   str="📦 Загрузка проекта с GitHub..." ;;
+                    curl_required) str="❌ Требуется curl. Установите: sudo pacman -S curl" ;;
                 esac
                 ;;
             *)
                 case "$key" in
-                    downloading)       str="📦 Downloading project from GitHub..." ;;
-                    curl_required)     str="❌ curl is required. Install: sudo pacman -S curl" ;;
-                    checking_deps)     str="🔍 Checking dependencies..." ;;
-                    missing_deps)      str="❌ Missing required dependencies:" ;;
-                    install_them)      str="  Install them with:" ;;
-                    opencode_url)      str="    opencode v2: curl -fsSL https://opencode.ai/v2/install | bash" ;;
-                    glow_warning)      str="  ⚠️  glow not found — Markdown formatting will not be available" ;;
-                    glow_install)      str="       Install: sudo pacman -S glow" ;;
-                    installing)        str="📦 Installing Ask AI Dolphin context menu..." ;;
-                    copying_scripts)   str="  → Copying scripts to %s" ;;
-                    installing_servicemenu) str="  → Installing service menu to %s" ;;
-                    creating_config)   str="  → Creating default config at %s" ;;
-                    config_exists)     str="  → Config already exists at %s (keeping)" ;;
-                    creating_ask_ai)   str="  → Creating ~/.ask_ai with terminal functions (ask / askr)" ;;
-                    ask_ai_exists)     str="  → ~/.ask_ai already exists (keeping)" ;;
-                    ask_ai_see_example) str="       New options: see dot-ask_ai/dot-ask_ai.example in the repo" ;;
-                    added_source)      str="  → Added 'source ~/.ask_ai' to %s" ;;
-                    no_shell_config)   str="  ⚠️  Could not detect shell config file." ;;
-                    add_manually)      str="       Add this line manually:" ;;
-                    add_manually_cmd)  str="         echo '[[ -f ~/.ask_ai ]] && . ~/.ask_ai' >> ~/.bashrc" ;;
-                    fish_note)         str="  ⚠️  Fish: ask/askr are bash/zsh functions. Add a wrapper manually or use bash." ;;
-                    install_complete)  str="✅ Installation complete!" ;;
-                    restart_dolphin)   str="To apply, restart Dolphin: Ctrl+Shift+R" ;;
-                    restart_terminal)  str="Or from terminal: killall dolphin && dolphin --new-window &" ;;
-                    optional)          str="📝 Optional:" ;;
-                    edit_presets)      str="  - Edit presets:  nano %s" ;;
-                    set_model)         str="  - Set model:     nano ~/.ask_ai  (change ASK_AI_MODEL)" ;;
-                    set_effort)        str="  - Set effort:   nano ~/.ask_ai  (change ASK_AI_EFFORT)" ;;
-                    set_mode)          str="  - Set mode:     nano ~/.ask_ai  (change ASK_AI_MODE)" ;;
-                    *)                 str="[msg_%s]" ;;
+                    downloading)   str="📦 Downloading project from GitHub..." ;;
+                    curl_required) str="❌ curl is required. Install: sudo pacman -S curl" ;;
                 esac
                 ;;
         esac
+        [ -n "$str" ] || str="[msg_%s]"
     fi
 
     # Safe printf: format string is from our locale table, not user input
@@ -147,6 +97,7 @@ if [ -f "$PROJECT_DIR/src/ask-ai-common.sh" ]; then
         LOCALE=$(ask_ai_detect_locale)
     fi
 fi
+# shellcheck disable=SC1090
 [ -f "$PROJECT_DIR/locales/$LOCALE" ] && source "$PROJECT_DIR/locales/$LOCALE"
 
 e checking_deps
@@ -180,6 +131,12 @@ if [ -n "$MISSING" ]; then
     exit 1
 fi
 
+# A v1 opencode in PATH is detected only at run time (its `run -f` breaks the
+# plugin), so warn during installation instead of failing after a right click.
+if declare -F ask_ai_opencode_bin &>/dev/null && ! ask_ai_opencode_bin &>/dev/null; then
+    e opencode_v2_warning
+fi
+
 if ! command -v glow &>/dev/null; then
     e glow_warning
     e glow_install
@@ -205,11 +162,17 @@ install -m 755 "$PROJECT_DIR/src/ask-ai-dolphin.sh"       "$BIN_DIR/ask-ai-dolph
 install -m 755 "$PROJECT_DIR/src/ask-ai-dolphin-run.sh"   "$BIN_DIR/ask-ai-dolphin-run.sh"
 install -m 755 "$PROJECT_DIR/src/ask-ai-dolphin-dialog.py" "$BIN_DIR/ask-ai-dolphin-dialog.py"
 
-cp "$PROJECT_DIR/locales/en_EN" "$LOCALE_DIR/en_EN"
-cp "$PROJECT_DIR/locales/ru_RU" "$LOCALE_DIR/ru_RU"
+# Copy every locale shipped with this checkout: adding a language must not
+# require editing the installer.
+cp "$PROJECT_DIR"/locales/* "$LOCALE_DIR"/
 
 e installing_servicemenu "$SERVICEMENU_DIR/"
-sed "s|@HOME@|$HOME|g" "$PROJECT_DIR/servicemenu/ask-ai-dolphin.desktop" \
+# Escape sed replacement metacharacters: a $HOME containing & or | used to
+# produce a broken .desktop file.
+_home_escaped="${HOME//\\/\\\\}"
+_home_escaped="${_home_escaped//&/\\&}"
+_home_escaped="${_home_escaped//|/\\|}"
+sed "s|@HOME@|$_home_escaped|g" "$PROJECT_DIR/servicemenu/ask-ai-dolphin.desktop" \
     > "$SERVICEMENU_DIR/ask-ai-dolphin.desktop"
 chmod +x "$SERVICEMENU_DIR/ask-ai-dolphin.desktop"
 
