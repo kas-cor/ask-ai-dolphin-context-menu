@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1](https://github.com/kas-cor/ask-ai-dolphin-context-menu/compare/v1.4.0...v1.4.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* run the ACP opencode agent from the v2 install in GUI sessions ([1374cc5](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/1374cc59dd17dd6b257fc439bb4aa9b070915117))
+
 ## [1.4.0](https://github.com/kas-cor/ask-ai-dolphin-context-menu/compare/v1.3.0...v1.4.0) (2026-10-23)
 
 
