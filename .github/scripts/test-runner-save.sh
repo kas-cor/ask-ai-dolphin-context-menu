@@ -1067,6 +1067,45 @@ else
     fail "Registry override not honoured: $(tail -3 "$TEST_DIR/fake-run-agent-override.log" | tr '\n' ' ')"
 fi
 
+# Dolphin's session PATH has no ~/.opencode/bin, so `opencode` there resolves to
+# a system v1 build while the v2 the CLI path uses lives in the home directory.
+# That v1 has its own auth and ended the GUI turn with "agent exited with an
+# error"; the ACP path must drive the same v2 binary as the terminal path.
+V1_BIN="$TEST_DIR/sysbin"
+V2_HOME="$TEST_DIR/v2home"
+V1_MARK="$TEST_DIR/v1-invoked"
+mkdir -p "$V1_BIN" "$V2_HOME/.opencode/bin"
+cat >"$V1_BIN/opencode" <<EOF
+#!/bin/bash
+if [ "\$1" = "--version" ]; then echo "1.19.4"; exit 0; fi
+touch "$V1_MARK"
+echo "system v1 cannot answer" >&2
+exit 1
+EOF
+cat >"$V2_HOME/.opencode/bin/opencode" <<EOF
+#!/bin/bash
+if [ "\$1" = "--version" ]; then echo "opencode v2.1.3"; exit 0; fi
+exec python3 "$SCRIPT_DIR/fake-acp-agent.py" "\$@"
+EOF
+chmod +x "$V1_BIN/opencode" "$V2_HOME/.opencode/bin/opencode"
+rm -f "$V1_MARK"
+env -u ASK_AI_AGENT -u ASK_AI_AGENT_CMD -u ASK_AI_MODEL -u ASK_AI_ACP -u ASK_AI_HARNESS \
+    PATH="$V1_BIN:/usr/bin:/bin" HOME="$V2_HOME" GLOW_DISABLED=1 ASK_AI_LOCALE=en_EN \
+    ASK_AI_AUTO_EXEC=0 \
+    bash "$RUNNER_FILE" "v2 query" "$TEST_DIR/attach-sample.py" \
+    </dev/null >"$TEST_DIR/fake-run-agent-v2.log" 2>&1
+if grep -qF 'Hello from ACP' "$TEST_DIR/fake-run-agent-v2.log" && [ ! -f "$V1_MARK" ]; then
+    pass "ACP path prefers the v2 opencode over the system v1 on PATH"
+else
+    fail "ACP path ran the system v1: $(tail -3 "$TEST_DIR/fake-run-agent-v2.log" | tr '\n' ' ')"
+fi
+# The colour reset sits between "ACP" and the label, so match the label only.
+if grep -qF '(opencode)' "$TEST_DIR/fake-run-agent-v2.log"; then
+    pass "The header names the agent, not the resolved binary path"
+else
+    fail "Header does not name the agent: $(grep -m1 'ACP' "$TEST_DIR/fake-run-agent-v2.log")"
+fi
+
 # --------------------------------
 echo ""
 if [ "$FAILED" -eq 1 ]; then

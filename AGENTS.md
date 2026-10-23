@@ -64,7 +64,7 @@ Terminal ($TERMINAL / konsole / fallback) — Markdown appearing chunk by chunk
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
 | `ASK_AI_HARNESS` | `acp` | `acp` runs the query through `ask-ai-acp-client.py`; `cli` uses the legacy `opencode run` path |
 | `ASK_AI_AGENT` | `opencode` | Registry id: `opencode`, `gemini`, `claude`, `codex`, `qwen`, `goose`, `copilot` (`ask_ai_agent_command` in common.sh maps it) |
-| `ASK_AI_AGENT_CMD` | unset | Explicit agent command line; wins over the registry |
+| `ASK_AI_AGENT_CMD` | unset | Explicit agent command line; wins over the registry. Without it, `opencode` resolves through `ask_ai_opencode_bin` so a GUI session does not run a system v1 build (its own auth, expired keys) |
 | `ASK_AI_PERMISSION` | `allow-read` | `session/request_permission` policy: read/search/fetch allowed, everything else denied; `ask` prompts y/N on the terminal, `deny` refuses all |
 | `ASK_AI_ACP_REUSE` | unset | `1` resumes the stored session (`session/load`) for the same agent + cwd |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Cancel a turn when no answer text arrives for this many seconds |

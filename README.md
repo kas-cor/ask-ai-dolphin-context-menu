@@ -147,7 +147,7 @@ nano ~/.ask_ai
 | `ASK_AI_THEME` | auto-detect (system palette) | Force UI theme: `dark` / `light` |
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
 | `ASK_AI_HARNESS` | `acp` | `acp` drives any [ACP](https://agentclientprotocol.com) agent; `cli` uses the legacy `opencode run` path |
-| `ASK_AI_AGENT` | `opencode` | Agents from the built-in registry: `opencode`, `gemini`, `claude`, `codex`, `qwen`, `goose`, `copilot` |
+| `ASK_AI_AGENT` | `opencode` | Agents from the built-in registry: `opencode`, `gemini`, `claude`, `codex`, `qwen`, `goose`, `copilot`. For `opencode` the runner prefers the v2 binary (`~/.opencode/bin`), because a GUI session's `PATH` often resolves to a system v1 with its own auth |
 | `ASK_AI_AGENT_CMD` | unset | Any agent command line; overrides the registry (e.g. `npx -y some-acp-agent`) |
 | `ASK_AI_PERMISSION` | `allow-read` | ACP tool permission policy: `allow-read` (read/search/fetch only), `ask` (y/N in the terminal for anything that changes files), `deny` |
 | `ASK_AI_ACP_REUSE` | unset | `1` resumes the previous session for the same agent and directory (`session/load`) |

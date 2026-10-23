@@ -267,6 +267,18 @@ if [ "$ACP_MODE" -eq 1 ] && [ -z "$AGENT_CMD" ]; then
     fi
 fi
 if [ "$ACP_MODE" -eq 1 ]; then
+    # The desktop session PATH (Dolphin → Konsole) does not include
+    # ~/.opencode/bin, so `opencode` there resolves to a system v1 build while
+    # the v2 used from a terminal lives in the home directory. That v1 carries
+    # its own auth store and ended the turn with "agent exited with an error"
+    # (an expired key) instead of answering. Resolve the same v2 binary the CLI
+    # path picks; ASK_AI_AGENT_CMD with an explicit path is left untouched.
+    if [ "${AGENT_CMD%% *}" = "opencode" ] && declare -F ask_ai_opencode_bin &>/dev/null; then
+        AGENT_V2=$(ask_ai_opencode_bin 2>/dev/null || true)
+        if [ -n "${AGENT_V2:-}" ]; then
+            AGENT_CMD="$AGENT_V2${AGENT_CMD#opencode}"
+        fi
+    fi
     AGENT_BIN="${AGENT_CMD%% *}"
     if ! command -v "$AGENT_BIN" &>/dev/null; then
         AGENT_HINT=""
@@ -358,7 +370,9 @@ elif [ -n "${ASK_AI_EFFORT:-}" ]; then
 fi
 
 if [ "$ACP_MODE" -eq 1 ]; then
-    AGENT_LABEL="${ASK_AI_AGENT:-${AGENT_CMD%% *}}"
+    # The resolved command may be an absolute path; the header should still
+    # name the agent, not its location.
+    AGENT_LABEL="${ASK_AI_AGENT:-$(basename -- "${AGENT_CMD%% *}")}"
 fi
 EXTRA_FLAGS+=(--agent "$MODE")
 
