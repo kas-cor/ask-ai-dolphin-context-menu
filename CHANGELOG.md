@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/kas-cor/ask-ai-dolphin-context-menu/compare/v1.2.1...v1.3.0) (2026-10-23)
+
+
+### Features
+
+* add an agent registry with install hints ([3b95960](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/3b95960269edd0bf671525e2de1b82a0768939e8))
+* add ASK_AI_EFFORT and ASK_AI_MODE env vars ([33c443a](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/33c443a29edaedc1efcdd194b075d8c950a5c5f4))
+* add ASK_AI_SAVE_DIR and auto-executable scripts ([a09fa0e](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/a09fa0eb8a6a2b780c706fe83cf077c2cc93bf8f))
+* add experimental ACP harness support ([12e4b69](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/12e4b69a2b147929337ebf7943134a0e00c1f939))
+* add file attachments, query history, terminal fallback, and safe script handling ([b2d32a2](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/b2d32a2b5a3665a27d21da49301692e3ab62c96a))
+* default to ACP and add permissions, session reuse and agent probe ([e17e91e](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/e17e91e6d19dc16f9e94c2b1ff624697179151cc))
+* initial release v1.0.0 ([14b09b5](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/14b09b5e6c08db17087477096061037fc5e622fa))
+
+
+### Bug Fixes
+
+* code review follow-up on v1.2.0 — strict mode + slug sanitize ([71f07a7](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/71f07a76aae5f37f30f9d2377ef12f7bf7b44ba6))
+* keep replayed history and directory context out of the answer ([2e3c2d0](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/2e3c2d00f0c3dfd5265e055b107448755fb059f3))
+* make script save and opencode launch reliable on real v2 setups ([8abcbee](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/8abcbeef3775abf7b19eb16da0a504f1e00e5d66))
+* make the menu usable from a Dolphin-started session ([09d4e9a](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/09d4e9a8834aa171a51f5553782aa855778d7619))
+* pass explicit --agent to opencode run to avoid v2 duplicate turn ([e5e719a](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/e5e719a57666bdef1d5228a45b54aae562ff2a53))
+* serve agent requests during handshake calls ([16b6c1c](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/16b6c1cafbe6f0491c6c58eb9cc2712c7aa61598))
+* stop the installer from overwriting files it does not own ([a56559f](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/a56559fcd24cc24c0ecd71952e8d37108d7c325b))
+* use printf for file/query display to prevent ANSI injection via paths ([4a4c0b3](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/4a4c0b359248268da808379baa9fb5c53f705661))
+
 ## [Unreleased]
 
 ### Features
