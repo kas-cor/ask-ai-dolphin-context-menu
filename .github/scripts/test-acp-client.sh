@@ -15,6 +15,9 @@
 #  11. --permission ask: terminal prompt, safe deny when there is no terminal
 #  12. --trace records both directions of the conversation
 #  13. --context text blocks and a sane ASK_AI_ACP_IDLE_TIMEOUT
+#  14. Agent requests made outside the prompt turn are served, not queued
+#      (a permission request before session/set_config_option answers)
+#  15. An invalid permission policy names the accepted values
 
 set -euo pipefail
 
@@ -377,6 +380,55 @@ if [ "$rc" -eq 0 ] && grep -q 'Hello from ACP' "$TEST_DIR/out-idle-env.txt" \
     pass "A non-numeric ASK_AI_ACP_IDLE_TIMEOUT warns and falls back"
 else
     fail "Bad idle timeout broke the run (rc=$rc): $(head -2 "$TEST_DIR/err-idle-env.txt")"
+fi
+
+# ------------------------------------------------------
+print_header "14. Agent request during a config call"
+# ------------------------------------------------------
+# The agent blocks on session/request_permission before answering
+# session/set_config_option. The client must answer it right there; holding it
+# in the queue until the prompt turn would stall the handshake.
+rc=$(run_client early-perm FAKE_ACP_EARLY_PERMISSION=1 -- --verbose --model fake/small "Question")
+if [ "$rc" -eq 0 ] && [ "$(cat "$TEST_DIR/out-early-perm.txt")" = "Hello from ACP" ]; then
+    pass "Config call served the agent's permission request and the turn finished"
+else
+    fail "Agent request during a config call stalled (rc=$rc): $(head -3 "$TEST_DIR/err-early-perm.txt")"
+fi
+if agent_log_has '"pre_permission_option": "allow"'; then
+    pass "Read-only permission granted while the config call was in flight"
+else
+    fail "Permission request was not answered: $(grep pre_permission "$LOG_FILE" || echo none)"
+fi
+if agent_log_has '"model": "fake/small"'; then
+    pass "Config call completed after the permission reply"
+else
+    fail "Config call never completed"
+fi
+if grep -q "agent_thought_chunk" "$TEST_DIR/err-early-perm.txt"; then
+    pass "Notifications received meanwhile are kept for the main loop"
+else
+    fail "Notification sent during the config call was lost: $(cat "$TEST_DIR/err-early-perm.txt")"
+fi
+
+# ------------------------------------------------------
+print_header "15. Invalid permission policy"
+# ------------------------------------------------------
+rc=0
+: >"$LOG_FILE"
+env ASK_AI_PERMISSION=bogus FAKE_ACP_LOG="$LOG_FILE" \
+    python3 "$CLIENT" --agent "$AGENT_CMD" --cwd "$TEST_DIR" "Question" \
+    >"$TEST_DIR/out-perm-bogus.txt" 2>"$TEST_DIR/err-perm-bogus.txt" || rc=$?
+if [ "$rc" -eq 2 ] && grep -q 'unknown permission policy' "$TEST_DIR/err-perm-bogus.txt" \
+    && grep -q 'ASK_AI_PERMISSION' "$TEST_DIR/err-perm-bogus.txt" \
+    && grep -q 'allow-read, ask, deny' "$TEST_DIR/err-perm-bogus.txt"; then
+    pass "A bad policy names the variable and the accepted values (exit 2)"
+else
+    fail "Bad permission policy handling wrong (rc=$rc): $(head -3 "$TEST_DIR/err-perm-bogus.txt")"
+fi
+if grep -q 'usage:' "$TEST_DIR/err-perm-bogus.txt"; then
+    fail "The raw argparse usage dump is still printed"
+else
+    pass "No argparse usage dump in the message"
 fi
 
 # ------------------------------------------------------

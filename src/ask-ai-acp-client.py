@@ -42,6 +42,8 @@ HANDSHAKE_TIMEOUT = 60.0
 DEFAULT_IDLE_TIMEOUT = 180.0
 # Tool calls that only read: safe to auto-approve when the policy allows it.
 READ_ONLY_KINDS = {"read", "search", "fetch", "think"}
+# Permission policies accepted by --permission / ASK_AI_PERMISSION.
+PERMISSION_POLICIES = ("allow-read", "ask", "deny")
 # Agents name their modes differently (Codex: read-only/auto, Claude Code:
 # plan/acceptEdits, opencode: plan/build). Map the two ask-ai levels onto the
 # first mode the agent actually offers instead of failing the query.
@@ -183,6 +185,9 @@ class AgentProcess:
         self._incoming = queue.Queue()
         self._next_id = 0
         self._write_lock = threading.Lock()
+        # Set by Client: answers agent-initiated requests while a request() is
+        # in flight (the agent may ask for permission before the first prompt).
+        self.on_request = None
 
     def start(self):
         try:
@@ -239,21 +244,36 @@ class AgentProcess:
         req_id = self._next_id
         self.send({"jsonrpc": "2.0", "id": req_id, "method": method, "params": params})
         deadline = time.monotonic() + timeout
+        deferred = []
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
+                self._requeue(deferred)
                 raise AcpError(f"{method}: no response from the agent")
             entry = self._next(timeout=remaining)
             if entry is None:
+                self._requeue(deferred)
                 raise AcpError(f"{method}: agent exited")
-            if entry.get("id") != req_id or "method" in entry:
-                # Not the response we wait for: keep it for the main loop.
-                self._incoming.put(("msg", entry))
-                time.sleep(0.01)
+            if "method" in entry:
+                if "id" in entry and self.on_request:
+                    # The agent is waiting on an answer; leaving it queued until
+                    # the prompt turn would stall it until the idle timeout.
+                    self.on_request(entry)
+                    continue
+                # A notification: hold it in arrival order for the main loop.
+                deferred.append(entry)
                 continue
+            if entry.get("id") != req_id:
+                deferred.append(entry)
+                continue
+            self._requeue(deferred)
             if "error" in entry:
                 raise AcpError(f"{method}: {_error_text(entry['error'])}")
             return entry.get("result") or {}
+
+    def _requeue(self, entries):
+        for entry in entries:
+            self._incoming.put(("msg", entry))
 
     def _next(self, timeout):
         try:
@@ -337,6 +357,7 @@ class Client:
         self.trace = Trace(args.trace)
         self.store = SessionStore(args.session_store)
         self.agent = AgentProcess(split_command(args.agent), self.trace)
+        self.agent.on_request = self._on_agent_request
         self.session_id = None
         self.config_options = []
         self.stop_reason = None
@@ -715,7 +736,7 @@ def parse_args(argv):
     parser.add_argument("--model", default=None, help="model config option value")
     parser.add_argument("--effort", default=None, help="reasoning effort option value")
     parser.add_argument("--mode", default=None, help="session mode (plan/build)")
-    parser.add_argument("--permission", choices=("allow-read", "ask", "deny"),
+    parser.add_argument("--permission", metavar="POLICY",
                         default=os.environ.get("ASK_AI_PERMISSION") or "allow-read",
                         help="permission policy: allow-read (default), ask (y/N on the terminal), deny")
     parser.add_argument("--reuse-session", action="store_true",
@@ -735,6 +756,14 @@ def parse_args(argv):
     parser.add_argument("query", nargs="?", help="question to ask (omitted with --probe)")
     parser.add_argument("files", nargs="*", help="files attached as resource links")
     args = parser.parse_args(argv)
+    if args.permission not in PERMISSION_POLICIES:
+        # A bare argparse "invalid choice" dump reads as a crash in the
+        # terminal; name the env var and the accepted values instead.
+        log(
+            f"unknown permission policy {args.permission!r} "
+            f"(ASK_AI_PERMISSION / --permission): use {', '.join(PERMISSION_POLICIES)}"
+        )
+        raise SystemExit(2)
     if args.idle_timeout is None:
         args.idle_timeout = env_seconds("ASK_AI_ACP_IDLE_TIMEOUT", DEFAULT_IDLE_TIMEOUT)
     elif args.idle_timeout <= 0:
