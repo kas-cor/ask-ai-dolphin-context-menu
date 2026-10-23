@@ -5,28 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.3.0](https://github.com/kas-cor/ask-ai-dolphin-context-menu/compare/v1.2.1...v1.3.0) (2026-10-23)
 
 ### Features
 
-- **ACP is the default harness** — queries run through `ask-ai-acp-client.py` and any agent that speaks the Agent Client Protocol: `ASK_AI_AGENT` picks one from the registry (`opencode` default, `gemini`, `claude`, `codex`, `qwen`, `goose`, `copilot`), `ASK_AI_AGENT_CMD` takes any other command line, and a missing binary is reported together with its install command. Model / effort / mode map onto the agent's own config options (mode names are translated, e.g. Codex `read-only` for `plan`, Claude Code `acceptEdits` for `build`), selected files become `resource_link` blocks, a selected directory is described to the agent by its non-recursive listing, tool permissions are denied by default except reads, and only the answer text reaches stdout so glow, `.md` saving and script detection keep working. `ASK_AI_AGENT_CMD`, `ASK_AI_PERMISSION` (`allow-read` / `ask` / `deny`), `ASK_AI_ACP_REUSE` (resume the previous session), `ASK_AI_ACP_VERBOSE`, `ASK_AI_ACP_TRACE` and `ASK_AI_ACP_IDLE_TIMEOUT` tune it; `ASK_AI_HARNESS=cli` (or the legacy `ASK_AI_ACP=0`) keeps the old `opencode run` path, and `--probe` prints what an agent advertises
+- **ACP is the default harness** — queries run through `ask-ai-acp-client.py` and any agent that speaks the Agent Client Protocol: `ASK_AI_AGENT` picks one from the registry (`opencode` default, `gemini`, `claude`, `codex`, `qwen`, `goose`, `copilot`), `ASK_AI_AGENT_CMD` takes any other command line, and a missing binary is reported together with its install command ([12e4b69](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/12e4b69a2b147929337ebf7943134a0e00c1f939), [3b95960](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/3b95960269edd0bf671525e2de1b82a0768939e8))
+- **Agent settings map onto the agent's own config options** — model, effort and mode (mode names are translated, e.g. Codex `read-only` for `plan`, Claude Code `acceptEdits` for `build`); selected files become `resource_link` blocks, a selected directory is described by its non-recursive listing, tool permissions are denied except reads, and only the answer text reaches stdout so glow, `.md` saving and script detection keep working ([e17e91e](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/e17e91e6d19dc16f9e94c2b1ff624697179151cc))
+- **Harness controls** — `ASK_AI_PERMISSION` (`allow-read` / `ask` / `deny`), `ASK_AI_ACP_REUSE` (resume the previous session), `ASK_AI_ACP_VERBOSE`, `ASK_AI_ACP_TRACE` and `ASK_AI_ACP_IDLE_TIMEOUT`; `--probe` prints what an agent advertises; `ASK_AI_HARNESS=cli` (or the legacy `ASK_AI_ACP=0`) keeps the old `opencode run` path ([e17e91e](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/e17e91e6d19dc16f9e94c2b1ff624697179151cc))
 
 ### Bug Fixes
 
-- `ASK_AI_LOCALE=ru_RU` / `en_EN` is honoured again — the value was lower-cased and then compared against mixed case, so the documented full forms fell through to `$LANG`
-- `./install.sh ru_RU` installs the Russian UI (the argument was lower-cased before matching `ru_RU`)
-- Cancelling the dialog exits with 0 instead of aborting the entry script under `set -e`; a crashed dialog now reports its log path
-- Without `file(1)`, text files are detected again instead of every file being treated as binary
-- `~/.ask_ai` is read on the Dolphin path — by the entry script and by the runner — so model / mode / locale / save-dir settings apply to the menu, not only to `ask` / `askr` (Konsole does not pass the launcher's environment to an already running window; values already present in the environment still win)
-- A multi-line query is stored as a single history entry; the history file is written atomically
-- `$TERMINAL` may carry arguments (`konsole --hold`), and a failing runner no longer opens a second terminal window
-- A failed `opencode` run no longer leaves a partial `.md` in `ASK_AI_SAVE_DIR`
-- The Dolphin window still waits for Enter — the pause flag is now passed on the terminal command line, because Konsole hands the request to an already running instance and never inherits the launcher's environment (`ask` / `askr` still return to the prompt immediately)
-- Non-numeric `ASK_AI_MAX_ATTACH_*` values fall back to the defaults instead of silently dropping attachments
-- Paths starting with `-` are no longer passed to `opencode -f` as flags; CRLF preset configs are parsed correctly
-- The model catalog for `ASK_AI_EFFORT` is cached for a day instead of being fetched on every query
-- The installer no longer keeps a second copy of the locale strings (it had already drifted), copies every shipped locale, escapes `$HOME` in the generated `.desktop`, and warns about `opencode` v1
-- The installer checks the binary of the agent it will actually run (`ASK_AI_AGENT` / `ASK_AI_AGENT_CMD`), so a gemini/claude/codex setup installs without the opencode CLI and is no longer warned about opencode v1
+- **The menu works from a Dolphin-started session** ([09d4e9a](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/09d4e9a8834aa171a51f5553782aa855778d7619))
+  - `~/.ask_ai` is read by the entry script and by the runner, so model / mode / locale / save-dir settings apply to the menu, not only to `ask` / `askr`; values already present in the environment still win
+  - the Dolphin window waits for Enter again: the pause flag travels on the terminal command line, because Konsole hands the request to an already running instance and never inherits the launcher's environment (`ask` / `askr` still return to the prompt immediately)
+  - `$TERMINAL` may carry arguments (`konsole --hold`), and a failing runner no longer opens a second terminal window
+  - cancelling the dialog exits with 0 instead of aborting the entry script under `set -e`; a crashed dialog reports its log path
+  - `ASK_AI_LOCALE=ru_RU` / `en_EN` is honoured again — the value was lower-cased and then compared against mixed case
+  - a multi-line query is stored as a single history entry, written atomically
+  - a failed `opencode` run no longer leaves a partial `.md` in `ASK_AI_SAVE_DIR`
+  - without `file(1)`, text files are detected again; non-numeric `ASK_AI_MAX_ATTACH_*` values fall back to the defaults; paths starting with `-` are not passed to `opencode -f` as flags; CRLF preset configs are parsed correctly
+  - the `ASK_AI_EFFORT` model catalog is cached for a day instead of being fetched on every query
+- **The installer no longer overwrites files it does not own** — it keeps no second copy of the locale strings (that copy had drifted), copies every shipped locale, escapes `$HOME` in the generated `.desktop`, checks the binary of the agent it will actually run (`ASK_AI_AGENT` / `ASK_AI_AGENT_CMD`) so a gemini/claude/codex setup installs without the opencode CLI, and `./install.sh ru_RU` installs the Russian UI ([a56559f](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/a56559fcd24cc24c0ecd71952e8d37108d7c325b))
+- **An agent request during a handshake call no longer hangs the query** — the client answers `session/request_permission` while it waits for `session/set_config_option`, instead of queueing it for `session/prompt`, and notifications that arrive meanwhile are replayed in order ([16b6c1c](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/16b6c1cafbe6f0491c6c58eb9cc2712c7aa61598))
+- **Only the answer reaches stdout** — replayed session history and the directory listing handed to the agent are filtered out of the stream, and `session/load` carries the directory context ([2e3c2d0](https://github.com/kas-cor/ask-ai-dolphin-context-menu/commit/2e3c2d00f0c3dfd5265e055b107448755fb059f3))
 
 ## [1.2.1](https://github.com/kas-cor/ask-ai-dolphin-context-menu/compare/v1.2.0...v1.2.1) (2026-10-12)
 
