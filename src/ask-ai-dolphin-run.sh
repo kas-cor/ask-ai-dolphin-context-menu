@@ -159,26 +159,6 @@ else
     ERR_RED='\033[0;31m'
 fi
 
-# --- Header (no fixed box — emoji / CJK break column math) ---
-echo -e "${BOLD}${HDR_BLUE}════════════════════════════════════════${NC}"
-echo -e "${BOLD}${HDR_BLUE}  ${HDR_TITLE}${NC}"
-echo -e "${BOLD}${HDR_BLUE}════════════════════════════════════════${NC}"
-echo ""
-echo -e "${BOLD}${LABEL_YELLOW}${LBL_FILES}${NC}"
-for f in "${FILES[@]}"; do
-    if [ -d "$f" ]; then
-        # printf '%s' keeps escape sequences in paths verbatim (no ANSI injection)
-        printf '  %b📁 %s%b\n' "$FILE_CYAN" "$f" "$NC"
-    else
-        SIZE=$(du -h -- "$f" 2>/dev/null | cut -f1 || true)
-        printf '  %b📄 %s%b  %b(%s)%b\n' "$FILE_GREEN" "$f" "$NC" "$BOLD" "$SIZE" "$NC"
-    fi
-done
-echo ""
-echo -e "${BOLD}${LBL_QUESTION}${NC}"
-printf '  %b%s%b\n' "$LABEL_YELLOW" "$QUERY" "$NC"
-echo ""
-
 # --- Build file attachments (-f) and prompt context ---
 ATTACH_FLAGS=()
 ATTACHED_NAMES=()
@@ -379,35 +359,72 @@ fi
 
 if [ "$ACP_MODE" -eq 1 ]; then
     AGENT_LABEL="${ASK_AI_AGENT:-${AGENT_CMD%% *}}"
-    echo -e "${BOLD}${LBL_HARNESS}${NC} ${FILE_CYAN}ACP${NC} (${AGENT_LABEL}) ${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
-else
-    echo -e "${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
-fi
-if [ -n "${EFFORT_LINE:-}" ]; then
-    echo -e "$EFFORT_LINE"
 fi
 EXTRA_FLAGS+=(--agent "$MODE")
-echo -e "${BOLD}${LBL_MODE}${NC} ${FILE_CYAN}${MODE}${NC}"
 
-if [ ${#ATTACHED_NAMES[@]} -gt 0 ]; then
-    echo -e "${BOLD}${LBL_ATTACHED}${NC} ${FILE_CYAN}${#ATTACHED_NAMES[@]}${NC}"
-    for a in "${ATTACHED_NAMES[@]}"; do
-        printf '  %b+ %s%b\n' "$FILE_GREEN" "$a" "$NC"
+# --- Header (no fixed box — emoji / CJK break column math) ---
+# One function, because the header is printed twice when the answer is rendered:
+# inside the alternate screen next to the live stream, and again on the normal
+# screen together with the finished answer.
+print_run_header() {
+    echo -e "${BOLD}${HDR_BLUE}════════════════════════════════════════${NC}"
+    echo -e "${BOLD}${HDR_BLUE}  ${HDR_TITLE}${NC}"
+    echo -e "${BOLD}${HDR_BLUE}════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "${BOLD}${LABEL_YELLOW}${LBL_FILES}${NC}"
+    for f in "${FILES[@]}"; do
+        if [ -d "$f" ]; then
+            # printf '%s' keeps escape sequences in paths verbatim (no ANSI injection)
+            printf '  %b📁 %s%b\n' "$FILE_CYAN" "$f" "$NC"
+        else
+            SIZE=$(du -h -- "$f" 2>/dev/null | cut -f1 || true)
+            printf '  %b📄 %s%b  %b(%s)%b\n' "$FILE_GREEN" "$f" "$NC" "$BOLD" "$SIZE" "$NC"
+        fi
     done
-fi
-if [ ${#SKIPPED_NAMES[@]} -gt 0 ]; then
-    echo -e "${BOLD}${LBL_SKIPPED_ATTACH}${NC}"
-    for s in "${SKIPPED_NAMES[@]}"; do
-        printf '  %b- %s%b\n' "$LABEL_YELLOW" "$s" "$NC"
-    done
-fi
+    echo ""
+    echo -e "${BOLD}${LBL_QUESTION}${NC}"
+    printf '  %b%s%b\n' "$LABEL_YELLOW" "$QUERY" "$NC"
+    echo ""
+    if [ "$ACP_MODE" -eq 1 ]; then
+        echo -e "${BOLD}${LBL_HARNESS}${NC} ${FILE_CYAN}ACP${NC} (${AGENT_LABEL}) ${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
+    else
+        echo -e "${BOLD}${LBL_MODEL}${NC} ${FILE_CYAN}${MODEL}${NC}"
+    fi
+    if [ -n "${EFFORT_LINE:-}" ]; then
+        echo -e "$EFFORT_LINE"
+    fi
+    echo -e "${BOLD}${LBL_MODE}${NC} ${FILE_CYAN}${MODE}${NC}"
+    if [ ${#ATTACHED_NAMES[@]} -gt 0 ]; then
+        echo -e "${BOLD}${LBL_ATTACHED}${NC} ${FILE_CYAN}${#ATTACHED_NAMES[@]}${NC}"
+        for a in "${ATTACHED_NAMES[@]}"; do
+            printf '  %b+ %s%b\n' "$FILE_GREEN" "$a" "$NC"
+        done
+    fi
+    if [ ${#SKIPPED_NAMES[@]} -gt 0 ]; then
+        echo -e "${BOLD}${LBL_SKIPPED_ATTACH}${NC}"
+        for s in "${SKIPPED_NAMES[@]}"; do
+            printf '  %b- %s%b\n' "$LABEL_YELLOW" "$s" "$NC"
+        done
+    fi
+    echo ""
+}
+
 echo ""
 
 # --- Temp output + cleanup ---
 TEMP_OUTPUT=$(mktemp)
-# Preserve INT trap behavior; also clean temp on exit (incl. extracted script)
-trap 'rm -f "$TEMP_OUTPUT" "${TEMP_OUTPUT}.script"; echo ""; exit 0' INT
-trap 'rm -f "$TEMP_OUTPUT" "${TEMP_OUTPUT}.script"' EXIT
+# Preserve INT trap behavior; also clean temp on exit (incl. extracted script).
+# Leaving the alternate screen (only when it was entered) keeps a Ctrl+C or any
+# early exit from stranding the terminal on a screen that goes away with the
+# process.
+RENDER_ANSWER=0
+leave_alt_screen() {
+    if [ "$RENDER_ANSWER" -eq 1 ]; then
+        printf '\033[?1049l'
+    fi
+}
+trap 'leave_alt_screen; rm -f "$TEMP_OUTPUT" "${TEMP_OUTPUT}.script" "${TEMP_OUTPUT}.render"; echo ""; exit 0' INT
+trap 'leave_alt_screen; rm -f "$TEMP_OUTPUT" "${TEMP_OUTPUT}.script" "${TEMP_OUTPUT}.render"' EXIT
 
 SAVE_FILE=""
 if [ -n "${ASK_AI_SAVE_DIR:-}" ]; then
@@ -461,14 +478,39 @@ if [ "$ACP_MODE" -eq 1 ]; then
     fi
 fi
 
+# pipefail keeps an agent failure visible instead of letting a formatting stage
+# swallow it.
+#
+# ACP answers arrive token by token and must reach the terminal as they are
+# produced, so that path prints raw Markdown: glow can only render a finished
+# document, and piping the stream through it held the whole answer back until
+# the turn ended. tee writes each chunk straight through, so the .md file and
+# the script detection get the answer without buffering it on the way to the
+# screen. The legacy CLI path keeps glow.
+#
+# When the answer will be rendered at the end, the stream runs on the alternate
+# screen: a terminal cannot erase lines that have already scrolled into the
+# scrollback, so replacing the streamed text in place only ever worked for
+# answers shorter than the window. Leaving the alternate screen throws the
+# stream away in one step, and the formatted answer is printed under the header
+# on the normal screen — whatever its length.
+RENDER_ANSWER=0
+if [ "$ACP_MODE" -eq 1 ] && [ "${GLOW_DISABLED:-0}" != "1" ] \
+    && [ -t 1 ] && command -v glow &>/dev/null; then
+    RENDER_ANSWER=1
+    printf '\033[?1049h'
+fi
+
+# Inside the alternate screen when it is used, so the window shows what is being
+# asked while the agent works; neither this header nor the stream survives the
+# rendering.
+print_run_header
 echo -e "${BOLD}${LBL_STREAMING}${NC}"
 echo ""
 
-# pipefail keeps an agent failure visible instead of letting a formatting stage
-# swallow it.
 set -o pipefail
 OPENCODE_STATUS=0
-if [ "${GLOW_DISABLED:-0}" = "1" ]; then
+if [ "$ACP_MODE" -eq 1 ] || [ "${GLOW_DISABLED:-0}" = "1" ]; then
     run_agent | tee "$TEMP_OUTPUT" || OPENCODE_STATUS=$?
 elif command -v glow &>/dev/null; then
     run_agent | tee "$TEMP_OUTPUT" | glow - || OPENCODE_STATUS=$?
@@ -477,6 +519,34 @@ else
     run_agent | tee "$TEMP_OUTPUT" || OPENCODE_STATUS=$?
 fi
 set +o pipefail
+
+# --- Replace the streamed answer with a rendered one ---
+if [ "$RENDER_ANSWER" -eq 1 ]; then
+    # glow probes the terminal for its colours and cursor position and waits for
+    # the reply as long as its stdout is a TTY — and it reads that reply from
+    # stdin, which here is the answer file. The window sat blank for seconds.
+    # Rendering into a file keeps glow off the terminal entirely; the explicit
+    # style and width stand in for what the probe would have detected.
+    GCOLS=$(tput cols 2>/dev/null || true)
+    case "${GCOLS:-}" in
+        ''|*[!0-9]*) GCOLS=80 ;;
+    esac
+    RENDERED=0
+    if [ "$OPENCODE_STATUS" -eq 0 ] \
+        && glow -s "$DETECTED_THEME" -w "$GCOLS" - <"$TEMP_OUTPUT" >"${TEMP_OUTPUT}.render" 2>/dev/null; then
+        RENDERED=1
+    fi
+    printf '\033[?1049l'
+    RENDER_ANSWER=0  # the traps must not leave the alternate screen again
+    print_run_header
+    if [ "$RENDERED" -eq 1 ]; then
+        cat -- "${TEMP_OUTPUT}.render"
+    else
+        # Nothing to render (failed turn or failing glow): the partial answer
+        # must not disappear together with the alternate screen.
+        cat -- "$TEMP_OUTPUT"
+    fi
+fi
 
 if [ "$OPENCODE_STATUS" -ne 0 ]; then
     if [ "$ACP_MODE" -eq 1 ] && [ "$OPENCODE_STATUS" -eq 3 ]; then

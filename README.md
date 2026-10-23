@@ -21,7 +21,7 @@ Select files/folders → right-click → **Ask AI** → choose a preset or type 
 - **Query presets** — configurable list of quick queries
 - **Custom query** — free-text input field for your own question
 - **Model selection** — via the `ASK_AI_MODEL` environment variable (defaults to free `opencode/mimo-v2.6-flash-free`)
-- **Streaming response** — output is piped through `glow` for real-time Markdown highlighting
+- **Streaming response** — the ACP answer is printed as the agent produces it (raw Markdown, no waiting for the turn to finish); with `glow` installed the finished answer then replaces the streamed text as one formatted message. The legacy `ASK_AI_HARNESS=cli` path is still piped through `glow`
 - **No selection fallback** — if nothing is selected, the current directory is used as context
 - **PyQt dialog** — multi-line input, presets, recent history; Breeze-styled (PyQt5 / PyQt6)
 - **File attachments** — text files attached to opencode via `-f` (size/count limits)
@@ -142,7 +142,7 @@ nano ~/.ask_ai
 | `ASK_AI_CLIPBOARD` | unset | Set `1` to copy the response to the clipboard |
 | `ASK_AI_MAX_ATTACH_BYTES` | `204800` | Max bytes per file attached with `opencode -f` |
 | `ASK_AI_MAX_ATTACH_FILES` | `20` | Max number of attached text files |
-| `GLOW_DISABLED` | unset | Set to `1` for raw output without glow formatting (`askr`) |
+| `GLOW_DISABLED` | unset | Set to `1` to turn glow off entirely: the ACP answer stays as it was streamed and `askr` prints it raw |
 | `ASK_AI_LOCALE` | auto-detect (system `$LANG`) | Force UI language: `ru_RU` / `en_EN` |
 | `ASK_AI_THEME` | auto-detect (system palette) | Force UI theme: `dark` / `light` |
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
@@ -153,7 +153,7 @@ nano ~/.ask_ai
 | `ASK_AI_ACP_REUSE` | unset | `1` resumes the previous session for the same agent and directory (`session/load`) |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Cancel the turn when no answer text arrives for this many seconds |
 | `ASK_AI_ACP_SESSION_STORE` | `~/.cache/ask-ai/acp-sessions.json` | Where resumed session ids are remembered |
-| `ASK_AI_ACP_VERBOSE` | unset | `1` prints agent thoughts and tool calls on stderr |
+| `ASK_AI_ACP_VERBOSE` | unset | `1` prints agent thoughts and tool calls on stderr; without it a single `Thinking...` line says the agent is working |
 | `ASK_AI_ACP_TRACE` | unset | Log JSON-RPC traffic to this file |
 | `ASK_AI_ACP` | unset | Legacy alias: `0` selects the CLI path (same as `ASK_AI_HARNESS=cli`) |
 
@@ -206,7 +206,7 @@ What maps onto what:
 | selected files | `resource_link` content blocks with absolute `file://` URIs |
 | `ASK_AI_SAVE_DIR`, `ASK_AI_CLIPBOARD`, `ASK_AI_AUTO_EXEC` | unchanged — they work on the streamed Markdown |
 
-Only the agent's answer text is printed, so glow, the saved `.md` and the script detection see clean Markdown; thoughts and tool calls go to stderr (see `ASK_AI_ACP_VERBOSE`). Unsupported options are reported and skipped instead of failing the query. With `ASK_AI_PERMISSION=ask` the runner asks `y/N` in the window before a tool may modify files (read-only tools are always allowed); without a terminal the answer is `no`. `ASK_AI_ACP_REUSE=1` continues the previous conversation in the same directory instead of starting over. If the agent needs a login, the runner tells you so and exits with code 3 — run the agent's login command in a terminal, then retry.
+Only the agent's answer text is printed, so the terminal stream, the saved `.md` and the script detection see clean Markdown; nothing buffers the answer, so it appears chunk by chunk instead of after the turn ends, and once it is complete `glow` renders it once more in place of the streamed text (unless `GLOW_DISABLED=1`). The stream runs on the terminal's alternate screen (the files/question/model header is printed there too, so it stays visible while the agent works), and leaving it replaces the streamed text completely whatever its length; the rendering goes through a temp file, so glow never probes the terminal and cannot stall; thoughts and tool calls go to stderr (see `ASK_AI_ACP_VERBOSE`). Unsupported options are reported and skipped instead of failing the query. With `ASK_AI_PERMISSION=ask` the runner asks `y/N` in the window before a tool may modify files (read-only tools are always allowed); without a terminal the answer is `no`. `ASK_AI_ACP_REUSE=1` continues the previous conversation in the same directory instead of starting over. If the agent needs a login, the runner tells you so and exits with code 3 — run the agent's login command in a terminal, then retry.
 
 Diagnostics: `ASK_AI_ACP_TRACE=/tmp/acp.log` records every JSON-RPC message, and
 
@@ -225,7 +225,8 @@ ask "Find bugs in this code"
 askr "Show me the answer"
 ```
 
-- `ask "..."` — streams response through `glow` (formatted Markdown)
+- `ask "..."` — streams the answer as it arrives, then shows it formatted through `glow`
+- `ASK_AI_HARNESS=cli ask "..."` — legacy path, formatted through `glow`
 - `askr "..."` — raw output (no formatting)
 
 ## Localization
@@ -314,7 +315,7 @@ cp locales/en_EN locales/de_DE
 1. Select one or more files/folders in Dolphin
 2. Right-click → **🤖 Ask AI**
 3. Choose a preset (sends immediately) or type your query and click **Send**
-4. Konsole opens — the response streams through `glow`
+4. Konsole opens — the answer streams into the window as it is generated, then appears formatted through `glow`
 5. Press **Ctrl+C** or **Enter** to close the window
 
 ## Project structure
@@ -324,7 +325,7 @@ ask-ai-dolphin-context-menu/
 ├── src/
 │   ├── ask-ai-common.sh           # Shared shell helpers (locale, file checks)
 │   ├── ask-ai-dolphin.sh          # Entry point — dialog + terminal
-│   ├── ask-ai-dolphin-run.sh      # Runner: opencode -f, glow, script confirm
+│   ├── ask-ai-dolphin-run.sh      # Runner: ACP stream (glow for the CLI path), save, script confirm
 │   └── ask-ai-dolphin-dialog.py   # Dialog: presets, history, multi-line input
 ├── servicemenu/
 │   └── ask-ai-dolphin.desktop     # Dolphin service menu file

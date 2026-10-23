@@ -14,6 +14,10 @@ network, an API key or a real harness. Behaviour is selected with env vars:
   FAKE_ACP_EARLY_PERMISSION "1" → ask for permission before answering a
                                    session/set_config_option, as agents that
                                    inspect the workspace while configuring do
+  FAKE_ACP_CHUNK_DELAY  seconds to wait between the two answer chunks, so a
+                        test can tell a streamed answer from a buffered one
+  FAKE_ACP_LONG       "1" → answer with 40 numbered lines instead of the short
+                        one, for the taller-than-the-window case
 """
 
 import json
@@ -30,6 +34,11 @@ LOAD_SESSION = os.environ.get("FAKE_ACP_LOAD") == "1"
 LOAD_FAIL = os.environ.get("FAKE_ACP_LOAD_FAIL") == "1"
 REPLAY = os.environ.get("FAKE_ACP_REPLAY") == "1"
 EARLY_PERMISSION = os.environ.get("FAKE_ACP_EARLY_PERMISSION") == "1"
+try:
+    CHUNK_DELAY = float(os.environ.get("FAKE_ACP_CHUNK_DELAY") or 0)
+except ValueError:
+    CHUNK_DELAY = 0.0
+LONG_ANSWER = os.environ.get("FAKE_ACP_LONG") == "1"
 SESSION_ID = "sess_fake_1"
 # Mutable state shared with the request handlers.
 STATE = {"early_asked": False, "pending_config": None}
@@ -199,8 +208,14 @@ def prompt_turn(params):
     if SCENARIO == "hang":
         return
 
-    chunk("Hello ")
-    chunk("from ACP")
+    if LONG_ANSWER:
+        for number in range(1, 41):
+            chunk(f"{number}. line {number}\n")
+    else:
+        chunk("Hello ")
+        if CHUNK_DELAY:
+            time.sleep(CHUNK_DELAY)
+        chunk("from ACP")
     send({"jsonrpc": "2.0", "id": "prompt", "result": {"stopReason": "end_turn"}})
 
 

@@ -852,6 +852,145 @@ else
     fail "Directory selection sent no listing: $(head -c 300 "$ACP_LOG")"
 fi
 
+# The answer must reach the terminal while the turn is still running. The fake
+# agent waits between its two chunks, and the fake glow consumes everything
+# before printing: a buffered pipeline shows nothing until the agent is done.
+STREAM_BIN="$TEST_DIR/stream-bin"
+mkdir -p "$STREAM_BIN"
+GLOW_MARK="$TEST_DIR/glow-invoked"
+rm -f "$GLOW_MARK"
+cat >"$STREAM_BIN/glow" <<EOF
+#!/bin/bash
+touch "$GLOW_MARK"
+cat >/dev/null
+EOF
+chmod +x "$STREAM_BIN/glow"
+STREAM_LOG="$TEST_DIR/fake-run-acp-stream.log"
+rm -f "$STREAM_LOG"
+env -u ASK_AI_MODEL -u ASK_AI_ACP -u ASK_AI_HARNESS -u GLOW_DISABLED \
+    ASK_AI_AGENT_CMD="python3 $SCRIPT_DIR/fake-acp-agent.py" \
+    FAKE_ACP_CHUNK_DELAY=2 \
+    PATH="$STREAM_BIN:/usr/bin:/bin" HOME="$FAKE_HOME" ASK_AI_LOCALE=en_EN \
+    ASK_AI_AUTO_EXEC=0 \
+    bash "$RUNNER_FILE" "stream query" "$TEST_DIR/attach-sample.py" \
+    </dev/null >"$STREAM_LOG" 2>&1 &
+STREAM_PID=$!
+streamed_live=0
+for _ in $(seq 1 100); do
+    if grep -qF 'Hello' "$STREAM_LOG" 2>/dev/null; then
+        kill -0 "$STREAM_PID" 2>/dev/null && streamed_live=1
+        break
+    fi
+    kill -0 "$STREAM_PID" 2>/dev/null || break
+    sleep 0.1
+done
+wait "$STREAM_PID" 2>/dev/null || true
+if [ "$streamed_live" -eq 1 ]; then
+    pass "ACP answer reaches the terminal before the turn ends (streamed)"
+else
+    fail "ACP answer appeared only after the turn finished (pipeline buffered it)"
+fi
+if [ -f "$GLOW_MARK" ]; then
+    fail "ACP path still pipes the stream through glow"
+else
+    pass "ACP path does not pipe the stream through glow"
+fi
+if grep -qF 'Hello from ACP' "$STREAM_LOG"; then
+    pass "Streamed answer is complete"
+else
+    fail "Streamed answer was cut: $(tail -2 "$STREAM_LOG" | tr '\n' ' ')"
+fi
+
+# With glow enabled the finished answer replaces the streamed text: the cursor
+# returns to the first line of the answer, the raw block is erased and glow
+# prints the response as one formatted message. Escape codes belong to a
+# terminal, so this runs under `script` (a pseudo-terminal) — a redirected run
+# must stay clean, which the checks above already rely on.
+if command -v script &>/dev/null; then
+    FMT_BIN="$TEST_DIR/fmt-bin"
+    mkdir -p "$FMT_BIN"
+    cat >"$FMT_BIN/glow" <<'GLOW'
+#!/bin/bash
+echo "GLOWED-START"
+cat
+echo "GLOWED-END"
+GLOW
+    chmod +x "$FMT_BIN/glow"
+    run_in_pty() {
+        local log="$1" glow_off="$2" extra="${3:-}"
+        local wrapper="$TEST_DIR/pty-run.sh"
+        {
+            echo '#!/bin/bash'
+            printf 'GLOW_OFF=%s\n' "$glow_off"
+            printf 'EXTRA_ENV=%q\n' "$extra"
+            cat <<EOF
+exec env -u ASK_AI_MODEL -u ASK_AI_ACP -u ASK_AI_HARNESS \${GLOW_OFF:+GLOW_DISABLED=1} \${EXTRA_ENV} \
+    ASK_AI_AGENT_CMD="python3 $SCRIPT_DIR/fake-acp-agent.py" \
+    PATH="$FMT_BIN:/usr/bin:/bin" HOME="$FAKE_HOME" ASK_AI_LOCALE=en_EN ASK_AI_AUTO_EXEC=0 \
+    bash "$RUNNER_FILE" "render query" "$TEST_DIR/attach-sample.py" </dev/null
+EOF
+        } >"$wrapper"
+        chmod +x "$wrapper"
+        script -qec "$wrapper" /dev/null >"$log" 2>&1
+    }
+    RENDER_LOG="$TEST_DIR/fake-run-acp-render.log"
+    run_in_pty "$RENDER_LOG" ""
+    if python3 - "$RENDER_LOG" <<'PY'
+import sys
+
+data = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+enter = data.find("\x1b[?1049h")
+leave = data.find("\x1b[?1049l", enter + 1 if enter >= 0 else 0)
+raw = data.find("Hello from ACP", enter if enter >= 0 else 0)
+rendered = data.find("GLOWED-START")
+ok = enter >= 0 and leave > enter and raw > enter and rendered > leave
+sys.exit(0 if ok else 1)
+PY
+    then
+        pass "Finished answer replaces the streamed text through glow"
+    else
+        fail "Streamed block was not replaced by a glow rendering"
+    fi
+    if grep -qF 'GLOWED-END' "$RENDER_LOG"; then
+        pass "glow rendered the whole answer in one pass"
+    else
+        fail "glow rendering is incomplete"
+    fi
+    # A real answer is usually taller than the window: the erase starts at the
+    # top of the screen then (the rest is in the scrollback), and the formatted
+    # answer still replaces what is visible.
+    TALL_LOG="$TEST_DIR/fake-run-acp-tall.log"
+    run_in_pty "$TALL_LOG" "" "FAKE_ACP_LONG=1"
+    if python3 - "$TALL_LOG" <<'PY'
+import sys
+
+data = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+enter = data.find("\x1b[?1049h")
+leave = data.find("\x1b[?1049l", enter + 1 if enter >= 0 else 0)
+last_raw = data.find("40. line 40", enter if enter >= 0 else 0)
+rendered = data.find("GLOWED-START")
+sys.exit(0 if enter >= 0 and leave > enter and last_raw > enter and rendered > leave else 1)
+PY
+    then
+        pass "A taller-than-the-window answer is replaced too"
+    else
+        fail "Tall answer was left as streamed"
+    fi
+    RAW_LOG="$TEST_DIR/fake-run-acp-norender.log"
+    run_in_pty "$RAW_LOG" "1"
+    if python3 - "$RAW_LOG" <<'PY'
+import sys
+
+data = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+sys.exit(0 if "1049" not in data and "GLOWED-START" not in data else 1)
+PY
+    then
+        pass "GLOW_DISABLED keeps the stream untouched"
+    else
+        fail "GLOW_DISABLED still erased or re-rendered the stream"
+    fi
+fi
+
 # --- Escape hatch: ASK_AI_HARNESS=cli and the old ASK_AI_ACP=0 keep the CLI
 run_cli_harness() {
     local label="$1"

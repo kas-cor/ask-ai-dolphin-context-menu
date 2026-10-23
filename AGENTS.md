@@ -24,10 +24,10 @@ ask-ai-dolphin.sh  — reads config, launches dialog, opens terminal
        │     Sends query via stdout
        │
        ▼
-ask-ai-dolphin-run.sh  — attaches files (-f), streams via opencode/glow
+ask-ai-dolphin-run.sh  — attaches files, streams the ACP answer live
        │
        ▼
-Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
+Terminal ($TERMINAL / konsole / fallback) — Markdown appearing chunk by chunk
 ```
 
 ## Key Files
@@ -36,7 +36,7 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 |---|---|
 | `src/ask-ai-common.sh` | Shared helpers: locale detect/load, text-file check, dir listing |
 | `src/ask-ai-dolphin.sh` | Entry point: config, dialog, terminal launch |
-| `src/ask-ai-dolphin-run.sh` | Runner: opencode + glow, save, script confirm |
+| `src/ask-ai-dolphin-run.sh` | Runner: ACP stream (legacy CLI path: opencode + glow), save, script confirm |
 | `src/ask-ai-dolphin-dialog.py` | Dialog: presets, history, multi-line input (i18n EN/RU) |
 | `src/ask-ai-acp-client.py` | ACP client (default harness): initialize/session-new/load, config options, permissions, streaming; `--probe` dumps agent capabilities |
 | `servicemenu/ask-ai-dolphin.desktop` | KDE service menu (`Name[ru]`) |
@@ -58,7 +58,7 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 | `ASK_AI_CLIPBOARD` | unset | Set `1` to copy response to clipboard (wl-copy/xclip/xsel) |
 | `ASK_AI_MAX_ATTACH_BYTES` | `204800` | Max size per file attached via `opencode -f` |
 | `ASK_AI_MAX_ATTACH_FILES` | `20` | Max number of attached text files |
-| `GLOW_DISABLED` | unset | Set `1` for raw output without glow (`askr`) |
+| `GLOW_DISABLED` | unset | Set `1` to turn glow off entirely: the ACP answer stays as it was streamed, `askr` prints it raw |
 | `ASK_AI_LOCALE` | auto (`$LANG`) | Force UI language: `ru_RU` / `en_EN` |
 | `ASK_AI_THEME` | auto (palette / COLORFGBG) | Force UI theme: `dark` / `light` |
 | `TERMINAL` | unset | Preferred terminal (takes priority over konsole) |
@@ -68,7 +68,7 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 | `ASK_AI_PERMISSION` | `allow-read` | `session/request_permission` policy: read/search/fetch allowed, everything else denied; `ask` prompts y/N on the terminal, `deny` refuses all |
 | `ASK_AI_ACP_REUSE` | unset | `1` resumes the stored session (`session/load`) for the same agent + cwd |
 | `ASK_AI_ACP_IDLE_TIMEOUT` | `180` | Cancel a turn when no answer text arrives for this many seconds |
-| `ASK_AI_ACP_VERBOSE` / `ASK_AI_ACP_TRACE` | unset | Thoughts and tool calls on stderr / JSON-RPC log file |
+| `ASK_AI_ACP_VERBOSE` / `ASK_AI_ACP_TRACE` | unset | Thoughts and tool calls on stderr / JSON-RPC log file. Without verbose, a single `Thinking...` (`Думает...`) line goes to stderr while the agent thinks before its answer |
 | `ASK_AI_ACP_SESSION_STORE` | `~/.cache/ask-ai/acp-sessions.json` | Where reused session ids are remembered |
 | `ASK_AI_ACP` | unset | Legacy alias: `0` = `ASK_AI_HARNESS=cli` |
 
@@ -81,7 +81,7 @@ Terminal ($TERMINAL / konsole / fallback) — formatted Markdown output
 3. Launches dialog with presets on argv and file info on stdin
 4. Dialog prints query to stdout (0 = OK, 1 = Cancel); saves to `~/.config/ask-ai-dolphin.history`
 5. Opens terminal with `ask-ai-dolphin-run.sh "<query>" <files...>` (`$TERMINAL` → konsole → kgx/gnome-terminal/xterm → inline TTY). Konsole hands `-e cmd` to an already running instance, so the session never inherits the launcher's environment: the pause flag travels on the command line (`env ASK_AI_PAUSE=1 …`), and the runner reads `~/.ask_ai` itself
-6. Runner attaches readable text files as `resource_link` blocks of an ACP `session/prompt` and streams the answer through `glow` (unless `GLOW_DISABLED=1`); `ASK_AI_HARNESS=cli` keeps the old `opencode run -f …` path. ACP mode prints only `agent_message_chunk` text, so the saved `.md`, glow and script detection still see clean Markdown
+6. Runner attaches readable text files as `resource_link` blocks of an ACP `session/prompt` and prints the answer as it arrives: each `agent_message_chunk` goes straight to the terminal (and through `tee` into the `.md`), because `glow` can only render a finished document and buffered the whole answer until the turn ended. While the agent thinks before its first chunk, the client prints one `Thinking...` line on stderr (thoughts stay hidden unless `ASK_AI_ACP_VERBOSE=1`). When `glow` is installed the stream runs on the terminal's alternate screen and the runner leaves it once the answer is complete, so the streamed raw text disappears completely whatever its length (a terminal cannot erase lines that already scrolled into the scrollback) and the answer is printed once as a formatted message under the header. `print_run_header` is called twice — inside the alternate screen and after leaving it — so the header stays visible while the agent works. glow renders into a temp file and the runner `cat`s it: glow probes the terminal and waits for the reply when its stdout is a TTY, which used to leave the window blank; `-s <theme>` and `-w <cols>` replace what the probe detected. The INT/EXIT traps leave the alternate screen and dump the partial answer if the turn failed, so nothing is lost on Ctrl+C or error. `ASK_AI_HARNESS=cli` keeps the old `opencode run -f …` path with glow. ACP mode prints only `agent_message_chunk` text, so the terminal, the saved `.md` and the script detection see clean Markdown
 7. If response is a shebang script: save `.sh`, then run only per `ASK_AI_AUTO_EXEC` (default: confirm)
 
 ## Config Presets
@@ -94,8 +94,8 @@ Query history: `~/.config/ask-ai-dolphin.history` (last 10).
 
 `~/.ask_ai` (created by installer):
 
-- `ask "..."` — query with PWD as context, through glow
-- `askr "..."` — raw output
+- `ask "..."` — query with PWD as context, streamed as it arrives then rendered through glow
+- `askr "..."` — raw output (`GLOW_DISABLED=1`)
 
 Installer adds `source ~/.ask_ai` to the rc file for `$SHELL` (zsh → `.zshrc`, bash → `.bashrc`, etc.).
 

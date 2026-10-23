@@ -57,7 +57,9 @@ export ASK_AI_MODEL="opencode/mimo-v2.6-flash-free"
 # export ASK_AI_MAX_ATTACH_BYTES=204800   # 200 KiB per file
 # export ASK_AI_MAX_ATTACH_FILES=20
 
-# Disable glow Markdown formatting (used by askr below).
+# Turn glow off entirely (used by askr below). ACP answers are streamed raw and
+# then re-rendered through glow once they are complete; with this set they stay
+# as they were streamed.
 # Uncomment for permanently raw output:
 # export GLOW_DISABLED=1
 

@@ -61,6 +61,14 @@ PERMISSION_PROMPT = {
     "ru": "Разрешить агенту «{title}» ({kind})? [y/N] ",
 }
 
+# Shown on stderr when thoughts are not requested and the agent is thinking
+# before its first answer chunk: one short line instead of a frozen-looking
+# window. The thoughts themselves stay hidden.
+THINKING_TEXT = {
+    "en": "Thinking...",
+    "ru": "Думает...",
+}
+
 
 def permission_locale():
     value = (os.environ.get("ASK_AI_LOCALE") or "").strip().lower().replace("-", "_")
@@ -362,6 +370,7 @@ class Client:
         self.config_options = []
         self.stop_reason = None
         self._streamed = 0
+        self._thinking_shown = False
         self._replaying = False
         self.auth_methods = []
         self.interrupted = False
@@ -582,7 +591,17 @@ class Client:
                 sys.stdout.write(text)
                 sys.stdout.flush()
                 self._streamed += len(text)
-        elif kind in ("agent_thought_chunk", "tool_call", "tool_call_update", "plan"):
+        elif kind == "agent_thought_chunk":
+            if self.args.verbose:
+                log(f"{kind}: {json.dumps(update, ensure_ascii=False)[:300]}")
+            elif not self._replaying and not self._streamed and not self._thinking_shown:
+                # Reasoning is off, so the window would show nothing while the
+                # agent works; one line says it is alive without leaking the
+                # thoughts. stderr keeps the answer (and the saved .md) clean.
+                sys.stderr.write(THINKING_TEXT[permission_locale()] + "\n")
+                sys.stderr.flush()
+                self._thinking_shown = True
+        elif kind in ("tool_call", "tool_call_update", "plan"):
             if self.args.verbose:
                 log(f"{kind}: {json.dumps(update, ensure_ascii=False)[:300]}")
         elif kind == "notice" and self.args.verbose:

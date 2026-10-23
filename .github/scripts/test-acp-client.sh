@@ -79,10 +79,31 @@ if [ "$(cat "$TEST_DIR/out-basic.txt")" = "Hello from ACP" ]; then
 else
     fail "Unexpected stdout: $(head -c 200 "$TEST_DIR/out-basic.txt")"
 fi
-if [ -s "$TEST_DIR/err-basic.txt" ]; then
-    fail "Quiet mode leaked to stderr: $(head -2 "$TEST_DIR/err-basic.txt")"
+# The indicator is localized, and these tests inherit the developer's $LANG.
+case "$(cat "$TEST_DIR/err-basic.txt")" in
+    "Thinking..."|"Думает...")
+        pass "Quiet mode announces that the agent is thinking"
+        ;;
+    *)
+        fail "Unexpected quiet-mode stderr: $(head -2 "$TEST_DIR/err-basic.txt")"
+        ;;
+esac
+rc=$(run_client thinking-en ASK_AI_LOCALE=en_EN -- "What is up?")
+if [ "$(cat "$TEST_DIR/err-thinking-en.txt")" = "Thinking..." ]; then
+    pass "The thinking indicator follows ASK_AI_LOCALE (en)"
 else
-    pass "Thoughts and tool calls stay silent without --verbose"
+    fail "English indicator missing: $(head -2 "$TEST_DIR/err-thinking-en.txt")"
+fi
+if grep -qi 'thinking about it\|agent_thought_chunk' "$TEST_DIR/err-basic.txt"; then
+    fail "Quiet mode still leaked the thoughts themselves"
+else
+    pass "Thoughts and tool calls stay hidden without --verbose"
+fi
+rc=$(run_client thinking-ru ASK_AI_LOCALE=ru_RU -- "What is up?")
+if [ "$(cat "$TEST_DIR/err-thinking-ru.txt")" = "Думает..." ]; then
+    pass "The thinking indicator follows ASK_AI_LOCALE (ru)"
+else
+    fail "Russian indicator missing: $(head -2 "$TEST_DIR/err-thinking-ru.txt")"
 fi
 
 rc=$(run_client verbose -- --verbose "What is up?")
@@ -91,6 +112,11 @@ if grep -q "agent_thought_chunk" "$TEST_DIR/err-verbose.txt" \
     pass "--verbose reports thoughts and tool calls on stderr"
 else
     fail "--verbose did not report protocol activity"
+fi
+if grep -qxF 'Thinking...' "$TEST_DIR/err-verbose.txt"; then
+    fail "--verbose still printed the thinking indicator"
+else
+    pass "--verbose replaces the indicator with the real thoughts"
 fi
 if grep -q '"jsonrpc"' "$TEST_DIR/out-verbose.txt"; then
     fail "Protocol traffic leaked into stdout"
